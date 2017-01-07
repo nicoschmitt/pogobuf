@@ -100,6 +100,7 @@ function Client(options) {
             protos: POGOProtos,
             version: '0.' + ((+self.options.version) / 100).toFixed(0),
         });
+        self.signatureBuilder.encryptAsync = Promise.promisify(self.signatureBuilder.encrypt, { context: self.signatureBuilder });
 
         /*
             The response to the first RPC call does not contain any response messages even though
@@ -928,51 +929,65 @@ function Client(options) {
      * @return {Promise} - A Promise that will be resolved with a RequestEnvelope instance
      */
     this.buildSignedEnvelope = function(requests, envelope) {
-        return new Promise((resolve, reject) => {
-            if (!envelope) {
-                try {
-                    envelope = self.buildEnvelope(requests);
-                } catch (e) {
-                    reject(new retry.StopError(e));
-                }
+        if (!envelope) {
+            try {
+                envelope = self.buildEnvelope(requests);
+            } catch (e) {
+                throw new retry.StopError(e);
+            }
+        }
+
+        if (!envelope.auth_ticket) {
+            // Can't sign before we have received an auth ticket
+            return Promise.resolve(envelope);
+        }
+
+        if (self.options.useHashingServer) {
+            let key = self.options.hashingKey;
+            if (Array.isArray(key)) {
+                key = key[self.lastHashingKeyIndex];
+                self.lastHashingKeyIndex = (self.lastHashingKeyIndex + 1) % self.options.hashingKey.length;
             }
 
-            if (!envelope.auth_ticket) {
-                // Can't sign before we have received an auth ticket
-                resolve(envelope);
-                return;
-            }
+            self.signatureBuilder.useHashingServer(self.options.hashingServer + self.hashingVersion, key);
+        }
 
-            if (self.options.useHashingServer) {
-                let key = self.options.hashingKey;
-                if (Array.isArray(key)) {
-                    key = key[self.lastHashingKeyIndex];
-                    self.lastHashingKeyIndex = (self.lastHashingKeyIndex + 1) % self.options.hashingKey.length;
-                }
+        self.signatureBuilder.setAuthTicket(envelope.auth_ticket);
 
-                self.signatureBuilder.useHashingServer(self.options.hashingServer + self.hashingVersion, key);
-            }
+        if (typeof self.options.signatureInfo === 'function') {
+            self.signatureBuilder.setFields(self.options.signatureInfo(envelope));
+        } else if (self.options.signatureInfo) {
+            self.signatureBuilder.setFields(self.options.signatureInfo);
+        }
 
-            self.signatureBuilder.setAuthTicket(envelope.auth_ticket);
+        self.signatureBuilder.setAuthTicket(envelope.auth_ticket);
+        self.signatureBuilder.setLocation(envelope.latitude, envelope.longitude, envelope.accuracy);
 
-            if (typeof self.options.signatureInfo === 'function') {
-                self.signatureBuilder.setFields(self.options.signatureInfo(envelope));
-            } else if (self.options.signatureInfo) {
-                self.signatureBuilder.setFields(self.options.signatureInfo);
-            }
+        if (typeof self.signatureInfo === 'function') {
+            self.signatureBuilder.setFields(self.signatureInfo(envelope));
+        } else if (self.signatureInfo) {
+            self.signatureBuilder.setFields(self.signatureInfo);
+        }
 
-            self.signatureBuilder.setLocation(envelope.latitude, envelope.longitude, envelope.accuracy);
-
-            self.signatureBuilder.encrypt(envelope.requests, (err, sigEncrypted) => {
-                if (err) {
-                    if (err.startsWith('Request limited')) {
-                        reject(new Error(err));
-                    } else {
-                        reject(new retry.StopError(err));
-                    }
-                    return;
-                }
-
+        return retry(() => self.signatureBuilder.encryptAsync(envelope.requests)
+                        .catch(err => {
+                            if (err.name === 'HashServerError') {
+                                if (err.message === 'Request limited') {
+                                    throw err;
+                                } else {
+                                    throw new retry.StopError(err);
+                                }
+                            } else {
+                                throw new retry.StopError(err);
+                            }
+                        }),
+            {
+                interval: 1000,
+                backoff: 2,
+                max_tries: 10,
+                args: envelope.requests,
+            })
+            .then(sigEncrypted => {
                 envelope.platform_requests.push(new POGOProtos.Networking.Envelopes.RequestEnvelope
                     .PlatformRequest({
                         type: POGOProtos.Networking.Platform.PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
@@ -980,10 +995,8 @@ function Client(options) {
                             encrypted_signature: sigEncrypted
                         }).encode()
                     }));
-
-                resolve(envelope);
+                return envelope;
             });
-        });
     };
 
     /**
