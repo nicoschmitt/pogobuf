@@ -237,9 +237,6 @@ declare namespace pogobuf {
             nickname: string
         ): Promise<POGOProtos.Networking.Responses.NicknamePokemonResponse>;
 
-        playerUpdate(
-        ): Promise<POGOProtos.Networking.Responses.PlayerUpdateResponse>;
-
         registerBackgroundDevice(
             deviceType: string,
             deviceID: string
