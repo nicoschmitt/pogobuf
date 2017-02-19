@@ -14,13 +14,11 @@ declare namespace pogobuf {
          */
         constructor(options?: Object);
 
-        signatureBuilder: any;
-
          /**
           * Sets the specified client option to the given value.
           * Note that not all options support changes after client initialization.
           * @param {string} option Option name
-          * @param {string} value Option value
+          * @param {any} value Option value
           */
         setOption(option: string, value: any): void;
 
@@ -28,7 +26,7 @@ declare namespace pogobuf {
          * Sets the player's latitude and longitude.
          * Note that this does not actually update the player location on the server,
          * it only sets the location to be used in following API calls.
-         * To update the location on the server you probably want to call playerUpdate().
+         * To update the location on the server you need to make an API call.
          * @param {number|Object} latitude - The player's latitude, or an object with parameters
          * @param {number} longitude The player's longitude
          * @param {number} accuracy The location accuracy in m (optional) (default value is 0)
@@ -39,7 +37,7 @@ declare namespace pogobuf {
         /**
          * Performs client initialization and downloads needed settings from the API.
          */
-        init(downloadSettings: boolean): Promise<any>;
+        init(downloadSettings?: boolean): Promise<any>;
 
         /**
          * Sets batch mode. All further API requests will be held and executed in one RPC call when batchCall() is called.
@@ -55,6 +53,11 @@ declare namespace pogobuf {
          * Executes any batched requests.
          */
         batchCall(): Promise<any>;
+
+        /**
+         * Gets rate limit info from the latest signature server request, if applicable.
+         */
+        getSignatureRateInfo(): Object;
 
         // Pokémon Go API methods
 
@@ -137,7 +140,8 @@ declare namespace pogobuf {
         ): Promise<POGOProtos.Networking.Responses.EquipBadgeResponse>;
 
         evolvePokemon(
-            pokemonID: string | number | Long
+            pokemonID: string | number | Long,
+            evolutionRequirementItemID: POGOProtos.Inventory.Item.ItemId
         ): Promise<POGOProtos.Networking.Responses.EvolvePokemonResponse>;
 
         fortDeployPokemon(
@@ -258,7 +262,7 @@ declare namespace pogobuf {
             pants: number,
             hat: number,
             shoes: number,
-            gender: POGOProtos.Enums.Gender,
+            avatar: number,
             eyes: number,
             backpack: number
         ): Promise<POGOProtos.Networking.Responses.SetAvatarResponse>;
@@ -312,6 +316,12 @@ declare namespace pogobuf {
             itemID: POGOProtos.Inventory.Item.ItemId,
             pokemonID: string | number | Long
         ): Promise<POGOProtos.Networking.Responses.UseItemEggIncubatorResponse>;
+
+        useItemEncounter(
+            itemID: POGOProtos.Inventory.Item.ItemId,
+            encounterID: string | number | Long,
+            spawnPointGUID: string
+        ): Promise<POGOProtos.Networking.Responses.UseItemEncounterResponse>;
 
         useItemGym(
             itemID: POGOProtos.Inventory.Item.ItemId,
