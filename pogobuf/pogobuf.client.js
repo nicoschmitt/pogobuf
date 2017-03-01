@@ -8,6 +8,8 @@ const EventEmitter = require('events').EventEmitter,
     request = require('request'),
     retry = require('bluebird-retry'),
     Utils = require('./pogobuf.utils.js'),
+    PTCLogin = require('./pogobuf.ptclogin.js'),
+    GoogleLogin = require('./pogobuf.googlelogin.js'),
     Signature = require('./pogobuf.signature');
 
 const Lehmer = Utils.Random;
@@ -26,8 +28,10 @@ const INITIAL_PTR8 = '90f6a704505bccac73cec99b07794993e6fd5a12';
 
 // See pogobuf wiki for description of options
 const defaultOptions = {
-    authToken: '',
     authType: 'ptc',
+    authToken: null,
+    username: null,
+    password: null,
     downloadSettings: true,
     mapObjectsThrottling: true,
     mapObjectsMinDelay: 5000,
@@ -131,6 +135,24 @@ function Client(options) {
         self.endpoint = INITIAL_ENDPOINT;
 
         let promise = Promise.resolve(true);
+
+        // login
+        if (!self.options.token) {
+            if (!self.options.username) throw new Error('No token nor credentials provided.');
+            if (self.options.authType == 'ptc') {
+                self.login = new PTCLogin();
+                if (self.options.proxy) self.login.setProxy(self.options.proxy);
+            } else {
+                self.login = new GoogleLogin();
+            }
+
+            promise = promise.then(() => {
+                return self.login.login(self.options.username, self.options.password)
+                        .then(token => {
+                            self.options.authToken = token;
+                        });
+            });
+        }
 
         if (self.options.useHashingServer) {
             promise = promise.then(self.initializeHashingServer);
@@ -1191,6 +1213,21 @@ function Client(options) {
                             if (ptr8) self.ptr8 = ptr8.message;
                         }
                     });
+
+                    /* Auth expire, auto relogin */
+                    if (responseEnvelope.status_code === 102 && self.login) {
+                        signedEnvelope.platform_requests = [];
+                        self.login.reset();
+                        self.login.login(self.options.username, self.options.password)
+                        .then(token => {
+                            self.options.authToken = token;
+                            self.authTicket = null;
+                            signedEnvelope.auth_ticket = null;
+                            signedEnvelope.auth_info = token;
+                            resolve(self.callRPC(requests, signedEnvelope));
+                        });
+                        return;
+                    }
 
                     /* Throttling, retry same request later */
                     if (responseEnvelope.status_code === 52) {
