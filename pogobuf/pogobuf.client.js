@@ -135,7 +135,7 @@ function Client(options) {
         let promise = Promise.resolve(true);
 
         // login
-        if (!self.options.token) {
+        if (!self.options.authToken) {
             if (!self.options.username) throw new Error('No token nor credentials provided.');
             if (self.options.authType === 'ptc') {
                 self.login = new PTCLogin();
