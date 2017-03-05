@@ -829,9 +829,11 @@ function Client(options) {
         headers: {
             'User-Agent': 'Niantic App',
             'Accept': '*/*',
-            'Content-Type': 'application/x-www-form-urlencoded'
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept-Language': 'en-us',
         },
-        encoding: null
+        gzip: true,
+        encoding: null,
     });
 
     this.options = Object.assign({}, defaultOptions, options || {});
