@@ -1040,11 +1040,6 @@ function Client(options) {
             authTicket = envelope.auth_info;
         }
 
-        if (!authTicket) {
-            // Can't sign before we have received an auth ticket
-            return Promise.resolve(envelope);
-        }
-
         if (self.options.useHashingServer) {
             let key = self.options.hashingKey;
             if (Array.isArray(key)) {
