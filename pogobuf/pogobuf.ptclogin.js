@@ -54,7 +54,8 @@ function PTCLogin() {
                 method: 'GET',
                 url: 'https://sso.pokemon.com/sso/login',
                 qs: {
-                    service: 'https://sso.pokemon.com/sso/oauth2.0/callbackAuthorize'
+                    service: 'https://sso.pokemon.com/sso/oauth2.0/callbackAuthorize',
+                    locale: 'en',
                 }
             }, (err, response, body) => {
                 if (err) {
@@ -103,7 +104,8 @@ function PTCLogin() {
                 method: 'POST',
                 url: 'https://sso.pokemon.com/sso/login',
                 qs: {
-                    service: 'https://sso.pokemon.com/sso/oauth2.0/callbackAuthorize'
+                    service: 'https://sso.pokemon.com/sso/oauth2.0/callbackAuthorize',
+                    locale: 'en',
                 },
                 form: {
                     'lt': sessionData.lt,
