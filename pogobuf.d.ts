@@ -40,6 +40,11 @@ declare namespace pogobuf {
         init(downloadSettings?: boolean): Promise<any>;
 
         /**
+         * Perform client cleanUp. Stop timers and clean tokens
+         */
+        cleanUp(): void;
+
+        /**
          * Sets batch mode. All further API requests will be held and executed in one RPC call when batchCall() is called.
          */
         batchStart(): Client;
