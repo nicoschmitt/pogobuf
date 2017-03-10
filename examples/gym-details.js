@@ -96,4 +96,5 @@ nodeGeocoder.geocode('2 Bryant St, San Francisco')
             console.log();
         });
     })
+    .then(() => client.cleanUp())
     .catch(console.error);

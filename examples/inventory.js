@@ -48,4 +48,5 @@ new pogobuf.GoogleLogin().login('your-username@gmail.com', 'your-google-password
                 pogobuf.Utils.getEnumKeyByValue(POGOProtos.Inventory.Item.ItemId, item.item_id));
         });
     })
+    .then(() => client.cleanUp())
     .catch(console.error);
