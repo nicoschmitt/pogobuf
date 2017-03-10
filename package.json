@@ -33,8 +33,8 @@
     "gpsoauthnode": "0.0.5",
     "long": "^3.2.0",
     "node-pogo-protos": "pogosandbox/node-pogo-protos#2.7.1",
-    "node-pogo-signature": "pogosandbox/node-pogo-signature#0.57.4",
-    "request": "^2.80.0",
+    "pogobuf-signature": "pogosandbox/pogobuf-signature#dev",
+    "request": "^2.81.0",
     "s2-geometry": "^1.2.9"
   },
   "devDependencies": {

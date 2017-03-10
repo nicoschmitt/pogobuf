@@ -3,14 +3,13 @@
 const EventEmitter = require('events').EventEmitter,
     Long = require('long'),
     POGOProtos = require('node-pogo-protos'),
-    pogoSignature = require('node-pogo-signature'),
+    pogoSignature = require('pogobuf-signature'),
     Promise = require('bluebird'),
     request = require('request'),
     retry = require('bluebird-retry'),
     Utils = require('./pogobuf.utils.js'),
     PTCLogin = require('./pogobuf.ptclogin.js'),
-    GoogleLogin = require('./pogobuf.googlelogin.js'),
-    Signature = require('./pogobuf.signature');
+    GoogleLogin = require('./pogobuf.googlelogin.js');
 
 const Lehmer = Utils.Random;
 
@@ -41,7 +40,6 @@ const defaultOptions = {
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
     version: 4500,
-    signatureInfo: null,
     useHashingServer: false,
     hashingServer: 'http://hashing.pogodev.io/',
     hashingKey: null,
@@ -109,16 +107,13 @@ function Client(options) {
 
         self.lastMapObjectsCall = 0;
 
-        // if no signature is defined, use default signature module
-        if (!self.options.signatureInfo) {
-            Signature.register(self, self.options.deviceId);
-        }
+        pogoSignature.signature.register(self, self.options.deviceId);
 
         // convert app version (5703) to client version (0.57.3)
         let signatureVersion = '0.' + ((+self.options.version) / 100).toFixed(0);
         signatureVersion += '.' + (+self.options.version % 100);
 
-        self.signatureBuilder = new pogoSignature.Builder({
+        self.signatureBuilder = new pogoSignature.encryption.Builder({
             protos: POGOProtos,
             version: signatureVersion,
         });
@@ -172,6 +167,15 @@ function Client(options) {
         }
 
         return promise;
+    };
+
+    /**
+     * Clean up ressources, like timer and token
+     */
+    this.cleanUp = function() {
+        pogoSignature.signature.clean();
+        self.options.authToken = null;
+        self.authTicket = null;
     };
 
     /**

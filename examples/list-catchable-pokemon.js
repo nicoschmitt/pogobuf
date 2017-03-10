@@ -46,4 +46,6 @@ new pogobuf.GoogleLogin().login(username, password).then(token => {
             });
         });
     }, 30 * 1000);
-}).catch(console.error);
+})
+.then(() => client.cleanUp())
+.catch(console.error);
