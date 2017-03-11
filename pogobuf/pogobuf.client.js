@@ -3,7 +3,7 @@
 const EventEmitter = require('events').EventEmitter,
     Long = require('long'),
     POGOProtos = require('node-pogo-protos'),
-    Signature = require('pogobuf.signature'),
+    Signature = require('pogobuf-signature'),
     Promise = require('bluebird'),
     request = require('request'),
     retry = require('bluebird-retry'),
@@ -173,7 +173,7 @@ function Client(options) {
      * Clean up ressources, like timer and token
      */
     this.cleanUp = function() {
-        pogoSignature.signature.clean();
+        Signature.signature.clean();
         self.options.authToken = null;
         self.authTicket = null;
     };
