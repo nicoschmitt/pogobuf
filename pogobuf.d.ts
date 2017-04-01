@@ -40,6 +40,11 @@ declare namespace pogobuf {
         init(downloadSettings?: boolean): Promise<any>;
 
         /**
+         * Perform client cleanUp. Stop timers and clean tokens
+         */
+        cleanUp(): void;
+
+        /**
          * Sets batch mode. All further API requests will be held and executed in one RPC call when batchCall() is called.
          */
         batchStart(): Client;
@@ -108,7 +113,7 @@ declare namespace pogobuf {
         downloadItemTemplates(
             paginate: boolean,
             pageOffset?: number,
-            pageTimestamp?: number
+            pageTimestamp?: Long
         ): Promise<POGOProtos.Networking.Responses.DownloadItemTemplatesResponse>;
 
         downloadRemoteConfigVersion(
@@ -255,17 +260,7 @@ declare namespace pogobuf {
             pokemonIDs: string | number | Long | string[] | number[] | Long[]
         ): Promise<POGOProtos.Networking.Responses.ReleasePokemonResponse>;
 
-        setAvatar(
-            skin: number,
-            hair: number,
-            shirt: number,
-            pants: number,
-            hat: number,
-            shoes: number,
-            avatar: number,
-            eyes: number,
-            backpack: number
-        ): Promise<POGOProtos.Networking.Responses.SetAvatarResponse>;
+        setAvatar(playerAvatar): Promise<POGOProtos.Networking.Responses.SetAvatarResponse>;
 
         setAvatarItemAsViewed(
             avatarTemplateIDs: string[]
@@ -375,6 +370,12 @@ declare namespace pogobuf {
          * @param {string} password
          */
         login(username: string, password: string): Promise<string>;
+
+        /**
+         * Sets a proxy address to use for logins.
+         * @param {string} proxy
+         */
+        setProxy(proxy: string): void;
 
         /**
          * Performs the Google login by skipping the password step and starting with the Master Token instead.

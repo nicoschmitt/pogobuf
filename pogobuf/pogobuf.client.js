@@ -3,28 +3,34 @@
 const EventEmitter = require('events').EventEmitter,
     Long = require('long'),
     POGOProtos = require('node-pogo-protos'),
-    pogoSignature = require('node-pogo-signature'),
+    Signature = require('pogobuf-signature'),
     Promise = require('bluebird'),
     request = require('request'),
     retry = require('bluebird-retry'),
-    Utils = require('./pogobuf.utils.js');
+    Utils = require('./pogobuf.utils.js'),
+    PTCLogin = require('./pogobuf.ptclogin.js'),
+    GoogleLogin = require('./pogobuf.googlelogin.js');
 
 const Lehmer = Utils.Random;
 
-Promise.promisifyAll(request);
-
 const RequestType = POGOProtos.Networking.Requests.RequestType,
     PlatformRequestType = POGOProtos.Networking.Platform.PlatformRequestType,
+    PlatformRequestMessages = POGOProtos.Networking.Platform.Requests,
+    PlatformResponses = POGOProtos.Networking.Platform.Responses,
     RequestMessages = POGOProtos.Networking.Requests.Messages,
     Responses = POGOProtos.Networking.Responses;
 
 const INITIAL_ENDPOINT = 'https://pgorelease.nianticlabs.com/plfe/rpc';
+const INITIAL_PTR8 = '90f6a704505bccac73cec99b07794993e6fd5a12';
 
 // See pogobuf wiki for description of options
 const defaultOptions = {
-    authToken: '',
     authType: 'ptc',
+    authToken: null,
+    username: null,
+    password: null,
     downloadSettings: true,
+    appSimulation: true,
     mapObjectsThrottling: true,
     mapObjectsMinDelay: 5000,
     proxy: null,
@@ -32,10 +38,10 @@ const defaultOptions = {
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
     version: 4500,
-    signatureInfo: {},
     useHashingServer: false,
     hashingServer: 'http://hashing.pogodev.io/',
-    hashingKey: null
+    hashingKey: null,
+    deviceId: null,
 };
 
 /**
@@ -89,48 +95,78 @@ function Client(options) {
     };
 
     /**
-     * Performs client initialization and downloads needed settings from the API and hashing server.
-     * @param {boolean} [downloadSettings] - Deprecated, use downloadSettings option instead
+     * Performs client initialization and do a proper api init call.
+     * @param {boolean} [appSimulation] - Deprecated, use appSimulation option instead
      * @return {Promise} promise
      */
-    this.init = function(downloadSettings) {
+    this.init = function(appSimulation) {
         // For backwards compatibility only
-        if (typeof downloadSettings !== 'undefined') self.setOption('downloadSettings', downloadSettings);
+        if (typeof appSimulation !== 'undefined') self.setOption('appSimulation', appSimulation);
 
         self.lastMapObjectsCall = 0;
+        self.endpoint = INITIAL_ENDPOINT;
 
-        // convert app version (5100) to client version (0.51)
+        // convert app version (5704) to client version (0.57.4)
         let signatureVersion = '0.' + ((+self.options.version) / 100).toFixed(0);
-        if ((+self.options.version % 100) !== 0) {
-            signatureVersion += '.' + (+self.options.version % 100);
-        }
+        signatureVersion += '.' + (+self.options.version % 100);
 
-        self.signatureBuilder = new pogoSignature.Builder({
+        Signature.signature.register(self, self.options.deviceId);
+
+        self.signatureBuilder = new Signature.encryption.Builder({
             protos: POGOProtos,
             version: signatureVersion,
         });
         self.signatureBuilder.encryptAsync = Promise.promisify(self.signatureBuilder.encrypt,
                                                                 { context: self.signatureBuilder });
 
-        /*
-            The response to the first RPC call does not contain any response messages even though
-            the envelope includes requests, technically it wouldn't be necessary to send the
-            requests but the app does the same. The call will then automatically be resent to the
-            new API endpoint by callRPC().
-        */
-        self.endpoint = INITIAL_ENDPOINT;
-
         let promise = Promise.resolve(true);
+
+        // login
+        if (!self.options.authToken) {
+            if (!self.options.username) throw new Error('No token nor credentials provided.');
+            if (self.options.authType === 'ptc') {
+                self.login = new PTCLogin();
+                if (self.options.proxy) self.login.setProxy(self.options.proxy);
+            } else {
+                self.login = new GoogleLogin();
+            }
+
+            promise = promise.then(() => self.login.login(self.options.username, self.options.password)
+                        .then(token => {
+                            self.options.authToken = token;
+                        }));
+        }
 
         if (self.options.useHashingServer) {
             promise = promise.then(self.initializeHashingServer);
         }
 
-        if (self.options.downloadSettings) {
-            promise = promise.then(() => self.downloadSettings()).then(self.processSettingsResponse);
+        if (self.options.appSimulation) {
+            const ios = POGOProtos.Enums.Platform.IOS;
+            const version = +self.options.version;
+            promise = promise.then(() => self.batchStart().batchCall())
+                        .then(() => self.getPlayer('US', 'en', 'Europe/Paris'))
+                        .then(() => self.batchStart()
+                                        .downloadRemoteConfigVersion(ios, '', '', '', version)
+                                        .checkChallenge()
+                                        .getHatchedEggs()
+                                        .getInventory()
+                                        .checkAwardedBadges()
+                                        .downloadSettings()
+                                        .batchCall())
+                        .then(self.processInitialResponse);
         }
 
         return promise;
+    };
+
+    /**
+     * Clean up ressources, like timer and token
+     */
+    this.cleanUp = function() {
+        Signature.signature.clean();
+        self.options.authToken = null;
+        self.authTicket = null;
     };
 
     /**
@@ -167,7 +203,7 @@ function Client(options) {
      * @return {Object}
      */
     this.getSignatureRateInfo = function() {
-        return self.signatureBuilder.utils.rateInfos;
+        return self.signatureBuilder.rateInfos;
     };
 
     /*
@@ -720,21 +756,11 @@ function Client(options) {
         });
     };
 
-    this.setAvatar = function(skin, hair, shirt, pants, hat, shoes, avatar, eyes, backpack) {
+    this.setAvatar = function(playerAvatar) {
         return self.callOrChain({
             type: RequestType.SET_AVATAR,
             message: new RequestMessages.SetAvatarMessage({
-                player_avatar: {
-                    skin: skin,
-                    hair: hair,
-                    shirt: shirt,
-                    pants: pants,
-                    hat: hat,
-                    shoes: shoes,
-                    avatar: avatar,
-                    eyes: eyes,
-                    backpack: backpack
-                }
+                player_avatar: playerAvatar
             }),
             responseType: Responses.SetAvatarResponse
         });
@@ -828,9 +854,11 @@ function Client(options) {
         headers: {
             'User-Agent': 'Niantic App',
             'Accept': '*/*',
-            'Content-Type': 'application/x-www-form-urlencoded'
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept-Language': 'en-us',
         },
-        encoding: null
+        gzip: true,
+        encoding: null,
     });
 
     this.options = Object.assign({}, defaultOptions, options || {});
@@ -838,8 +866,8 @@ function Client(options) {
     this.rpcId = 2;
     this.lastHashingKeyIndex = 0;
     this.firstGetMapObjects = true;
-    this.lehmer = new Lehmer(1);
-    this.ptr8 = '90f6a704505bccac73cec99b07794993e6fd5a12';
+    this.lehmer = new Lehmer(16807);
+    this.ptr8 = INITIAL_PTR8;
 
     /**
      * Executes a request and returns a Promise or, if we are in batch mode, adds it to the
@@ -864,6 +892,25 @@ function Client(options) {
      */
     this.getRequestID = function() {
         return new Long(self.rpcId++, this.lehmer.nextInt());
+    };
+
+    /**
+     * Generate auth_info object from authToken
+     * @return {object} auth_info to put in envelop
+     */
+    this.getAuthInfoObject = function() {
+        let unknown2 = 0;
+        if (self.options.authType === 'ptc') {
+            const values = [2, 8, 21, 21, 21, 28, 37, 56, 59, 59, 59];
+            unknown2 = values[Math.floor(values.length * Math.random())];
+        }
+        return {
+            provider: self.options.authType,
+            token: {
+                contents: self.options.authToken,
+                unknown2: unknown2,
+            }
+        };
     };
 
     /**
@@ -894,18 +941,7 @@ function Client(options) {
         } else if (!self.options.authType || !self.options.authToken) {
             throw Error('No auth info provided');
         } else {
-            let unknown2 = 0;
-            if (self.options.authType === 'ptc') {
-                const values = [2, 8, 21, 21, 21, 28, 37, 56, 59, 59, 59];
-                unknown2 = values[Math.floor(values.length * Math.random())];
-            }
-            envelopeData.auth_info = {
-                provider: self.options.authType,
-                token: {
-                    contents: self.options.authToken,
-                    unknown2: unknown2,
-                }
-            };
+            envelopeData.auth_info = this.getAuthInfoObject();
         }
 
         if (requests) {
@@ -937,34 +973,48 @@ function Client(options) {
     };
 
     /**
-     * Add the mysterious platform_request type 8 on request
-     * @param {Object[]} requests - Array of requests to build
-     * @param {RequestEnvelope} [envelope] - Pre-built request envelope to modify
+     * Constructs and adds a platform request to a request envelope.
+     * @private
+     * @param {RequestEnvelope} envelope - Request envelope
+     * @param {PlatformRequestType} requestType - Type of the platform request to add
+     * @param {Object} requestMessage - Pre-built but not encoded PlatformRequest protobuf message
+     * @return {RequestEnvelope} The envelope (for convenience only)
      */
-    this.maybeAddPlatformRequest8 = function(requests, envelope) {
-        let addIt = false;
-        if ((requests.length === 1 && requests[0].type === RequestType.GET_PLAYER)) {
-            // always in firsdt get_player
-            addIt = true;
-        } else if (requests.some(r => r.type === RequestType.GET_MAP_OBJECTS)) {
-            if (this.firstGetMapObjects) {
-                // not on first gmo
-                this.firstGetMapObjects = false;
-            } else {
-                // on all others?
-                addIt = true;
-            }
+    this.addPlatformRequestToEnvelope = function(envelope, requestType, requestMessage) {
+        envelope.platform_requests.push(
+            new POGOProtos.Networking.Envelopes.RequestEnvelope.PlatformRequest({
+                type: requestType,
+                request_message: requestMessage.encode()
+            })
+        );
+
+        return envelope;
+    };
+
+    /**
+     * Determines whether the as of yet unknown platform request type 8 should be added
+     * to the envelope based on the given type of requests.
+     * @private
+     * @param {Object[]} requests - Array of request data
+     * @return {boolean}
+     */
+    this.needsPtr8 = function(requests) {
+        // Single GET_PLAYER request always gets PTR8
+        if (requests.length === 1 && requests[0].type === RequestType.GET_PLAYER) {
+            return true;
         }
 
-        if (addIt) {
-            envelope.platform_requests.push(new POGOProtos.Networking.Envelopes.RequestEnvelope
-                .PlatformRequest({
-                    type: POGOProtos.Networking.Platform.PlatformRequestType.UNKNOWN_PTR_8,
-                    request_message: new POGOProtos.Networking.Platform.Requests.UnknownPtr8Request({
-                        message: this.ptr8,
-                    }).encode()
-                }));
+        // Any GET_MAP_OBJECTS requests get PTR8 except the first one in the session
+        if (requests.some(r => r.type === RequestType.GET_MAP_OBJECTS)) {
+            if (self.firstGetMapObjects) {
+                self.firstGetMapObjects = false;
+                return false;
+            }
+
+            return true;
         }
+
+        return false;
     };
 
     /**
@@ -984,16 +1034,16 @@ function Client(options) {
             }
         }
 
-        this.maybeAddPlatformRequest8(requests, envelope);
+        if (self.needsPtr8(requests)) {
+            self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.UNKNOWN_PTR_8,
+                new PlatformRequestMessages.UnknownPtr8Request({
+                    message: self.ptr8,
+                }));
+        }
 
         let authTicket = envelope.auth_ticket;
         if (!authTicket) {
             authTicket = envelope.auth_info;
-        }
-
-        if (!authTicket) {
-            // Can't sign before we have received an auth ticket
-            return Promise.resolve(envelope);
         }
 
         if (self.options.useHashingServer) {
@@ -1029,16 +1079,13 @@ function Client(options) {
                 max_tries: 10,
                 args: envelope.requests,
             })
-            .then(sigEncrypted => {
-                envelope.platform_requests.push(new POGOProtos.Networking.Envelopes.RequestEnvelope
-                    .PlatformRequest({
-                        type: POGOProtos.Networking.Platform.PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
-                        request_message: new POGOProtos.Networking.Platform.Requests.SendEncryptedSignatureRequest({
-                            encrypted_signature: sigEncrypted
-                        }).encode()
-                    }));
-                return envelope;
-            });
+            .then(sigEncrypted =>
+                self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
+                    new PlatformRequestMessages.SendEncryptedSignatureRequest({
+                        encrypted_signature: sigEncrypted
+                    })
+                )
+            );
     };
 
     /**
@@ -1069,6 +1116,34 @@ function Client(options) {
             interval: 300,
             backoff: 2,
             max_tries: self.options.maxTries
+        });
+    };
+
+    /**
+     * Handle redirection to new API endpoint and resend last request to new endpoint.
+     * @private
+     * @param {Object[]} requests - Array of requests
+     * @param {RequestEnvelope} signedEnvelope - Request envelope
+     * @param {ResponseEnvelope} responseEnvelope - Result from API call
+     * @return {Promise}
+     */
+    this.redirect = function(requests, signedEnvelope, responseEnvelope) {
+        return new Promise((resolve, reject) => {
+            if (!responseEnvelope.api_url) {
+                reject(Error('Fetching RPC endpoint failed, none supplied in response'));
+                return;
+            }
+
+            self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
+
+            self.emit('endpoint-response', {
+                status_code: responseEnvelope.status_code,
+                request_id: responseEnvelope.request_id.toString(),
+                api_url: responseEnvelope.api_url
+            });
+
+            signedEnvelope.platform_requests = [];
+            resolve(self.callRPC(requests, signedEnvelope));
         });
     };
 
@@ -1132,40 +1207,33 @@ function Client(options) {
 
                     if (responseEnvelope.auth_ticket) self.authTicket = responseEnvelope.auth_ticket;
 
-                    if (self.endpoint === INITIAL_ENDPOINT) {
-                        /* status_code 102 seems to be invalid auth token,
-                           could use later when caching token. */
-                        if (responseEnvelope.status_code !== 53) {
-                            reject(Error('Fetching RPC endpoint failed, received status code ' +
-                                responseEnvelope.status_code));
-                            return;
-                        }
-
-                        if (!responseEnvelope.api_url) {
-                            reject(Error('Fetching RPC endpoint failed, none supplied in response'));
-                            return;
-                        }
-
-                        self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
-
-                        self.emit('endpoint-response', {
-                            status_code: responseEnvelope.status_code,
-                            request_id: responseEnvelope.request_id.toString(),
-                            api_url: responseEnvelope.api_url
-                        });
-
-                        signedEnvelope.platform_requests = [];
-                        resolve(self.callRPC(requests, signedEnvelope));
+                    if (responseEnvelope.status_code === 53 ||
+                        (responseEnvelope.status_code === 2 && self.endpoint === INITIAL_ENDPOINT)) {
+                        resolve(self.redirect(requests, signedEnvelope, responseEnvelope));
                         return;
                     }
 
-                    responseEnvelope.platform_returns.forEach(ptfm => {
-                        if (ptfm.type === PlatformRequestType.UNKNOWN_PTR_8) {
-                            const proto = POGOProtos.Networking.Platform.Responses.UnknownPtr8Response;
-                            const ptr8 = proto.decode(ptfm.response);
-                            this.ptr8 = ptr8.message;
+                    responseEnvelope.platform_returns.forEach(platformReturn => {
+                        if (platformReturn.type === PlatformRequestType.UNKNOWN_PTR_8) {
+                            const ptr8 = PlatformResponses.UnknownPtr8Response.decode(platformReturn.response);
+                            if (ptr8) self.ptr8 = ptr8.message;
                         }
                     });
+
+                    /* Auth expire, auto relogin */
+                    if (responseEnvelope.status_code === 102 && self.login) {
+                        signedEnvelope.platform_requests = [];
+                        self.login.reset();
+                        self.login.login(self.options.username, self.options.password)
+                        .then(token => {
+                            self.options.authToken = token;
+                            self.authTicket = null;
+                            signedEnvelope.auth_ticket = null;
+                            signedEnvelope.auth_info = this.getAuthInfoObject();
+                            resolve(self.callRPC(requests, signedEnvelope));
+                        });
+                        return;
+                    }
 
                     /* Throttling, retry same request later */
                     if (responseEnvelope.status_code === 52) {
@@ -1247,23 +1315,26 @@ function Client(options) {
     };
 
     /**
-     * Processes the data received from the downloadSettings API call during init().
+     * Processes the data received from the initial API call during init().
      * @private
-     * @param {Object} settingsResponse - Response from API call
-     * @return {Object} response - Unomdified response (to send back to Promise)
+     * @param {Object} responses - Response from API call
+     * @return {Object} responses - Unomdified response (to send back to Promise)
      */
-    this.processSettingsResponse = function(settingsResponse) {
+    this.processInitialResponse = function(responses) {
         // Extract the minimum delay of getMapObjects()
-        if (settingsResponse &&
-            !settingsResponse.error &&
-            settingsResponse.settings &&
-            settingsResponse.settings.map_settings &&
-            settingsResponse.settings.map_settings.get_map_objects_min_refresh_seconds
-        ) {
-            self.setOption('mapObjectsMinDelay',
-                settingsResponse.settings.map_settings.get_map_objects_min_refresh_seconds * 1000);
+        if (responses.length >= 5) {
+            const settingsResponse = responses[5];
+            if (settingsResponse &&
+                !settingsResponse.error &&
+                settingsResponse.settings &&
+                settingsResponse.settings.map_settings &&
+                settingsResponse.settings.map_settings.get_map_objects_min_refresh_seconds
+            ) {
+                self.setOption('mapObjectsMinDelay',
+                    settingsResponse.settings.map_settings.get_map_objects_min_refresh_seconds * 1000);
+            }
         }
-        return settingsResponse;
+        return responses;
     };
 
     /**
@@ -1279,21 +1350,10 @@ function Client(options) {
             self.setOption('hashingServer', self.options.hashingServer + '/');
         }
 
-        return request.getAsync(self.options.hashingServer + 'api/hash/versions').then(response => {
-            const versions = JSON.parse(response.body);
-            if (!versions) throw new Error('Invalid initial response from hashing server');
-
-            let iosVersion = '1.' + ((+self.options.version - 3000) / 100).toFixed(0);
-            iosVersion += '.' + (+self.options.version % 100);
-
-            self.hashingVersion = versions[iosVersion];
-
-            if (!self.hashingVersion) {
-                throw new Error('Unsupported version for hashserver: ' + self.options.version + '/' + iosVersion);
-            }
-
-            return true;
-        });
+        return Signature.versions.getHashingEndpoint(self.options.hashingServer, self.options.version)
+                .then(version => {
+                    self.hashingVersion = version;
+                });
     };
 
     /*
@@ -1345,15 +1405,6 @@ function Client(options) {
      */
     this.setMapObjectsThrottlingEnabled = function(enable) {
         self.setOption('mapObjectsThrottling', enable);
-    };
-
-    /**
-     * Sets the signatureInfo option.
-     * @deprecated Use options object or setOption() instead
-     * @param {object|function} info
-     */
-    this.setSignatureInfo = function(info) {
-        self.setOption('signatureInfo', info);
     };
 
     /**
