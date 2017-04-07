@@ -37,7 +37,7 @@ const defaultOptions = {
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 4500,
+    version: 5901,
     useHashingServer: false,
     hashingServer: 'http://hashing.pogodev.io/',
     hashingKey: null,
@@ -1076,7 +1076,7 @@ function Client(options) {
             {
                 interval: 1000,
                 backoff: 2,
-                max_tries: 10,
+                max_tries: 5,
                 args: envelope.requests,
             })
             .then(sigEncrypted =>
@@ -1086,6 +1086,34 @@ function Client(options) {
                     })
                 )
             );
+    };
+
+    /**
+     * Handle redirection to new API endpoint and resend last request to new endpoint.
+     * @private
+     * @param {Object[]} requests - Array of requests
+     * @param {RequestEnvelope} signedEnvelope - Request envelope
+     * @param {ResponseEnvelope} responseEnvelope - Result from API call
+     * @return {Promise}
+     */
+    this.redirect = function(requests, signedEnvelope, responseEnvelope) {
+        return new Promise((resolve, reject) => {
+            if (!responseEnvelope.api_url) {
+                reject(Error('Fetching RPC endpoint failed, none supplied in response'));
+                return;
+            }
+
+            self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
+
+            self.emit('endpoint-response', {
+                status_code: responseEnvelope.status_code,
+                request_id: responseEnvelope.request_id.toString(),
+                api_url: responseEnvelope.api_url
+            });
+
+            signedEnvelope.platform_requests = [];
+            resolve(self.callRPC(requests, signedEnvelope));
+        });
     };
 
     /**
@@ -1116,34 +1144,6 @@ function Client(options) {
             interval: 300,
             backoff: 2,
             max_tries: self.options.maxTries
-        });
-    };
-
-    /**
-     * Handle redirection to new API endpoint and resend last request to new endpoint.
-     * @private
-     * @param {Object[]} requests - Array of requests
-     * @param {RequestEnvelope} signedEnvelope - Request envelope
-     * @param {ResponseEnvelope} responseEnvelope - Result from API call
-     * @return {Promise}
-     */
-    this.redirect = function(requests, signedEnvelope, responseEnvelope) {
-        return new Promise((resolve, reject) => {
-            if (!responseEnvelope.api_url) {
-                reject(Error('Fetching RPC endpoint failed, none supplied in response'));
-                return;
-            }
-
-            self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
-
-            self.emit('endpoint-response', {
-                status_code: responseEnvelope.status_code,
-                request_id: responseEnvelope.request_id.toString(),
-                api_url: responseEnvelope.api_url
-            });
-
-            signedEnvelope.platform_requests = [];
-            resolve(self.callRPC(requests, signedEnvelope));
         });
     };
 
@@ -1236,12 +1236,20 @@ function Client(options) {
                     }
 
                     /* Throttling, retry same request later */
-                    if (responseEnvelope.status_code === 52) {
+                    if (responseEnvelope.status_code === 52 && self.endpoint != INITIAL_ENDPOINT) {
                         signedEnvelope.platform_requests = [];
                         Promise.delay(2000).then(() => {
                             resolve(self.callRPC(requests, signedEnvelope));
                         });
                         return;
+                    }
+
+                    /* Temp fix for error 100 */
+                    if (responseEnvelope.status_code == 100) {
+                        let fs = require('fs');
+                        fs.writeFileSync((+new Date()) + '.req.raw.bin', signedEnvelope.toBuffer());
+                        console.log('DEBUG - Error 100');
+                        reject(new Error('Error 100.'));
                     }
 
                     /* These codes indicate invalid input, no use in retrying so throw StopError */
