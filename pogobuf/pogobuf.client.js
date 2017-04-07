@@ -115,6 +115,7 @@ function Client(options) {
         self.signatureBuilder = new Signature.encryption.Builder({
             protos: POGOProtos,
             version: signatureVersion,
+            initTime: (new Date().getTime() - 3500 - Math.random() * 5000),
         });
         self.signatureBuilder.encryptAsync = Promise.promisify(self.signatureBuilder.encrypt,
                                                                 { context: self.signatureBuilder });
