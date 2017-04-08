@@ -37,7 +37,7 @@ const defaultOptions = {
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 5901,
+    version: 6100,
     useHashingServer: false,
     hashingServer: 'http://hashing.pogodev.io/',
     hashingKey: null,
@@ -1243,14 +1243,6 @@ function Client(options) {
                             resolve(self.callRPC(requests, signedEnvelope));
                         });
                         return;
-                    }
-
-                    /* Temp fix for error 100 */
-                    if (responseEnvelope.status_code == 100) {
-                        let fs = require('fs');
-                        fs.writeFileSync((+new Date()) + '.req.raw.bin', signedEnvelope.toBuffer());
-                        console.log('DEBUG - Error 100');
-                        reject(new Error('Error 100.'));
                     }
 
                     /* These codes indicate invalid input, no use in retrying so throw StopError */
