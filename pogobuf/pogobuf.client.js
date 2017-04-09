@@ -30,8 +30,6 @@ const defaultOptions = {
     password: null,
     downloadSettings: true,
     appSimulation: true,
-    mapObjectsThrottling: true,
-    mapObjectsMinDelay: 5000,
     proxy: null,
     maxTries: 5,
     automaticLongConversion: true,
@@ -1109,19 +1107,6 @@ function Client(options) {
      *     or true if there aren't any
      */
     this.callRPC = function(requests, envelope) {
-        // If the requests include a map objects request, make sure the minimum delay
-        // since the last call has passed
-        if (requests.some(r => r.type === RequestType.GET_MAP_OBJECTS)) {
-            var now = new Date().getTime(),
-                delayNeeded = self.lastMapObjectsCall + self.options.mapObjectsMinDelay - now;
-
-            if (delayNeeded > 0 && self.options.mapObjectsThrottling) {
-                return Promise.delay(delayNeeded).then(() => self.callRPC(requests, envelope));
-            }
-
-            self.lastMapObjectsCall = now;
-        }
-
         if (self.options.maxTries <= 1) return self.tryCallRPC(requests, envelope);
 
         return retry(() => self.tryCallRPC(requests, envelope), {
@@ -1363,15 +1348,6 @@ function Client(options) {
      */
     this.setProxy = function(proxy) {
         self.setOption('proxy', proxy);
-    };
-
-    /**
-     * Sets the mapObjectsThrottling option.
-     * @deprecated Use options object or setOption() instead
-     * @param {boolean} enable
-     */
-    this.setMapObjectsThrottlingEnabled = function(enable) {
-        self.setOption('mapObjectsThrottling', enable);
     };
 
     /**
