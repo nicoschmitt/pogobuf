@@ -1,7 +1,6 @@
 'use strict';
 
-const EventEmitter = require('events').EventEmitter,
-    Long = require('long'),
+const Long = require('long'),
     POGOProtos = require('node-pogo-protos'),
     Signature = require('pogobuf-signature'),
     Promise = require('bluebird'),
@@ -946,15 +945,6 @@ function Client(options) {
         }
 
         if (requests) {
-            self.emit('request', {
-                request_id: envelopeData.request_id.toString(),
-                requests: requests.map(r => ({
-                    name: Utils.getEnumKeyByValue(RequestType, r.type),
-                    type: r.type,
-                    data: r.message
-                }))
-            });
-
             envelopeData.requests = requests.map(r => {
                 var requestData = {
                     request_type: r.type
@@ -967,8 +957,6 @@ function Client(options) {
                 return requestData;
             });
         }
-
-        self.emit('raw-request', envelopeData);
 
         return new POGOProtos.Networking.Envelopes.RequestEnvelope(envelopeData);
     };
@@ -1107,12 +1095,6 @@ function Client(options) {
 
             self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
 
-            self.emit('endpoint-response', {
-                status_code: responseEnvelope.status_code,
-                request_id: responseEnvelope.request_id.toString(),
-                api_url: responseEnvelope.api_url
-            });
-
             signedEnvelope.platform_requests = [];
             resolve(self.callRPC(requests, signedEnvelope));
         });
@@ -1191,7 +1173,6 @@ function Client(options) {
                         responseEnvelope =
                             POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(body);
                     } catch (e) {
-                        self.emit('parse-envelope-error', body, e);
                         if (e.decoded) {
                             responseEnvelope = e.decoded;
                         } else {
@@ -1199,8 +1180,6 @@ function Client(options) {
                             return;
                         }
                     }
-
-                    self.emit('raw-response', responseEnvelope);
 
                     if (responseEnvelope.error) {
                         reject(new retry.StopError(responseEnvelope.error));
@@ -1279,8 +1258,6 @@ function Client(options) {
                                     responseEnvelope.returns[i]
                                 );
                             } catch (e) {
-                                self.emit('parse-response-error',
-                                    responseEnvelope.returns[i].toBuffer(), e);
                                 reject(new retry.StopError(e));
                                 return;
                             }
@@ -1292,18 +1269,6 @@ function Client(options) {
                             responses.push(responseMessage);
                         }
                     }
-
-                    self.emit('response', {
-                        status_code: responseEnvelope.status_code,
-                        request_id: responseEnvelope.request_id.toString(),
-                        responses: responses.map((r, h) => ({
-                            name: Utils.getEnumKeyByValue(
-                                RequestType, requests[h].type
-                            ),
-                            type: requests[h].type,
-                            data: r
-                        }))
-                    });
 
                     if (self.options.automaticLongConversion) {
                         responses = Utils.convertLongs(responses);
@@ -1410,26 +1375,6 @@ function Client(options) {
     };
 
     /**
-     * Sets a callback to be called for any envelope or request just before it is sent to
-     * the server (mostly for debugging purposes).
-     * @deprecated Use the raw-request event instead
-     * @param {function} callback - function to call on requests
-     */
-    this.setRequestCallback = function(callback) {
-        self.on('raw-request', callback);
-    };
-
-    /**
-     * Sets a callback to be called for any envelope or response just after it has been
-     * received from the server (mostly for debugging purposes).
-     * @deprecated Use the raw-response event instead
-     * @param {function} callback - function to call on responses
-     */
-    this.setResponseCallback = function(callback) {
-        self.on('raw-response', callback);
-    };
-
-    /**
      * Sets the automaticLongConversion option.
      * @deprecated Use options object or setOption() instead
      * @param {boolean} enable
@@ -1439,7 +1384,5 @@ function Client(options) {
         self.setOption('automaticLongConversion', enable);
     };
 }
-
-Client.prototype = Object.create(EventEmitter.prototype);
 
 module.exports = Client;
