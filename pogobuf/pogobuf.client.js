@@ -151,8 +151,7 @@ function Client(options) {
                                         .getInventory()
                                         .checkAwardedBadges()
                                         .downloadSettings()
-                                        .batchCall())
-                        .then(self.processInitialResponse);
+                                        .batchCall());
         }
 
         return promise;
@@ -1264,29 +1263,6 @@ function Client(options) {
                     else resolve(responses);
                 });
             }));
-    };
-
-    /**
-     * Processes the data received from the initial API call during init().
-     * @private
-     * @param {Object} responses - Response from API call
-     * @return {Object} responses - Unomdified response (to send back to Promise)
-     */
-    this.processInitialResponse = function(responses) {
-        // Extract the minimum delay of getMapObjects()
-        if (responses.length >= 5) {
-            const settingsResponse = responses[5];
-            if (settingsResponse &&
-                !settingsResponse.error &&
-                settingsResponse.settings &&
-                settingsResponse.settings.map_settings &&
-                settingsResponse.settings.map_settings.get_map_objects_min_refresh_seconds
-            ) {
-                self.setOption('mapObjectsMinDelay',
-                    settingsResponse.settings.map_settings.get_map_objects_min_refresh_seconds * 1000);
-            }
-        }
-        return responses;
     };
 
     /**
