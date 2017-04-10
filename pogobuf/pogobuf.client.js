@@ -1125,18 +1125,18 @@ function Client(options) {
      *     or true if there aren't any
      */
     this.tryCallRPC = function(requests, envelope) {
-        let signedEnvelope = null;
         return self.buildSignedEnvelope(requests, envelope)
-            .then(signed => {
-                signedEnvelope = signed;
+            .then(signedEnvelope => {
                 return self.request.postAsync({
                     url: self.endpoint,
                     proxy: self.options.proxy,
                     body: signedEnvelope.toBuffer()
-                });
+                })
+                .then(response => ({ signedEnvelope: signedEnvelope, response: response }))
             })
-            .then(response => {
-                let body = response.body;
+            .then(result => {
+                let signedEnvelope = result.signedEnvelope;
+                let response = result.response;
                 if (response.statusCode !== 200) {
                     if (response.statusCode >= 400 && response.statusCode < 500) {
                         /* These are permanent errors so throw StopError */
@@ -1154,7 +1154,7 @@ function Client(options) {
                 var responseEnvelope;
                 try {
                     responseEnvelope =
-                        POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(body);
+                        POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(response.body);
                 } catch (e) {
                     if (e.decoded) {
                         responseEnvelope = e.decoded;
@@ -1249,8 +1249,8 @@ function Client(options) {
                     responses = Utils.convertLongs(responses);
                 }
 
-                if (!responses.length) resolve(true);
-                else if (responses.length === 1) resolve(responses[0]);
+                if (!responses.length) return true;
+                else if (responses.length === 1) return responses[0];
                 return responses;
             });
     };
