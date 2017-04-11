@@ -33,7 +33,7 @@
     "bytebuffer": "^5.0.1",
     "gpsoauth": "^1.0.0",
     "long": "^3.2.0",
-    "node-pogo-protos": "pogosandbox/node-pogo-protos#2.7.1",
+    "node-pogo-protos": "pogosandbox/node-pogo-protos#2.9.1",
     "pogobuf-signature": "pogosandbox/pogobuf-signature#dev",
     "request": "^2.81.0",
     "s2-geometry": "^1.2.9"
