@@ -127,10 +127,10 @@ function Client(options) {
             if (!self.options.username) throw new Error('No token nor credentials provided.');
             if (self.options.authType === 'ptc') {
                 self.login = new PTCLogin();
-                if (self.options.proxy) self.login.setProxy(self.options.proxy);
             } else {
                 self.login = new GoogleLogin();
             }
+            if (self.options.proxy) self.login.setProxy(self.options.proxy);
 
             promise = promise.then(() => self.login.login(self.options.username, self.options.password)
                         .then(token => {
