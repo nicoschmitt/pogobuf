@@ -124,10 +124,10 @@ function Client(options) {
             if (!self.options.username) throw new Error('No token nor credentials provided.');
             if (self.options.authType === 'ptc') {
                 self.login = new PTCLogin();
-                if (self.options.proxy) self.login.setProxy(self.options.proxy);
             } else {
                 self.login = new GoogleLogin();
             }
+            if (self.options.proxy) self.login.setProxy(self.options.proxy);
 
             promise = promise.then(() => self.login.login(self.options.username, self.options.password)
                         .then(token => {
@@ -261,7 +261,7 @@ function Client(options) {
                 device_manufacturer: deviceManufacturer,
                 device_model: deviceModel,
                 locale: locale,
-                app_version: appVersion
+                app_version: appVersion,
             }),
             responseType: Responses.DownloadRemoteConfigVersionResponse
         });
@@ -719,7 +719,7 @@ function Client(options) {
         });
     };
 
-    this.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion) {
+    this.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion, paginate, page_offset, page_timestamp) {
         return self.callOrChain({
             type: RequestType.GET_ASSET_DIGEST,
             message: new RequestMessages.GetAssetDigestMessage({
@@ -727,7 +727,10 @@ function Client(options) {
                 device_manufacturer: deviceManufacturer,
                 device_model: deviceModel,
                 locale: locale,
-                app_version: appVersion
+                app_version: appVersion,
+                paginate: paginate,
+                page_offset: page_offset,
+                page_timestamp: page_timestamp,
             }),
             responseType: Responses.GetAssetDigestResponse
         });
@@ -743,11 +746,12 @@ function Client(options) {
         });
     };
 
-    this.claimCodename = function(codename) {
+    this.claimCodename = function(codename, force) {
         return self.callOrChain({
             type: RequestType.CLAIM_CODENAME,
             message: new RequestMessages.ClaimCodenameMessage({
-                codename: codename
+                codename: codename,
+                force: force,
             }),
             responseType: Responses.ClaimCodenameResponse
         });
@@ -840,6 +844,25 @@ function Client(options) {
                 avatar_template_id: avatarTemplateIDs
             }),
             responseType: Responses.SetAvatarItemAsViewdResponse
+        });
+    };
+
+    this.getInbox = function() {
+        return self.callOrChain({
+            type: RequestType.GET_INBOX,
+            responseType: Responses.GetInboxResponse
+        });
+    };
+
+    this.updateNotificationStatus = function(notification_ids, create_timestamp_ms, state) {
+        return self.callOrChain({
+            type: RequestType.UPDATE_NOTIFICATION_STATUS,
+            message: new RequestMessages.UpdateNotificationMessage({
+                notification_ids: notification_ids,
+                create_timestamp_ms: create_timestamp_ms,
+                state: state,
+            }),
+            responseType: Responses.UpdateNotificationResponse
         });
     };
 
