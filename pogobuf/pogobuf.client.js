@@ -1256,7 +1256,10 @@ function Client(options) {
                             signedEnvelope.auth_ticket = null;
                             signedEnvelope.auth_info = this.getAuthInfoObject();
                             resolve(self.callRPC(requests, signedEnvelope));
-                        });
+                        })
+                        .catch(e => {
+                            reject(e);
+                        })
                         return;
                     }
 
