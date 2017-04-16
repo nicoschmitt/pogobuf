@@ -1,8 +1,8 @@
 'use strict';
 
+/* eslint no-underscore-dangle: ["error", { "allow": ["_eventId"] }] */
+
 const request = require('request'),
-    querystring = require('querystring'),
-    url = require('url'),
     Promise = require('bluebird');
 
 /**
@@ -64,7 +64,7 @@ function PTCLogin() {
             proxy: self.proxy,
         })
         .then(response => {
-            let body = response.body;
+            const body = response.body;
 
             if (response.statusCode !== 200) {
                 throw new Error(`Status ${response.statusCode} received from PTC login`);
@@ -95,10 +95,10 @@ function PTCLogin() {
      * @return {Promise}
      */
     this.getTicket = function(sessionData, username, password) {
-        sessionData['_eventId'] = 'submit';
-        sessionData['username'] = username;
-        sessionData['password'] = password;
-        sessionData['locale'] = 'en_US';
+        sessionData._eventId = 'submit';
+        sessionData.username = username;
+        sessionData.password = password;
+        sessionData.locale = 'en_US';
 
         return self.request.postAsync({
             url: 'https://sso.pokemon.com/sso/login',
@@ -111,8 +111,8 @@ function PTCLogin() {
         .then(response => {
             if (response.headers['set-cookie'] && response.headers['set-cookie'].length > 0) {
                 var cookieString = response.headers['set-cookie'].filter(c => c.startsWith('CASTGC'));
-                if (cookieString) {
-                    let cookie = request.cookie(cookieString[0]);
+                if (cookieString && cookieString.length > 0) {
+                    const cookie = request.cookie(cookieString[0]);
                     return cookie.value;
                 }
             }
