@@ -719,7 +719,8 @@ function Client(options) {
         });
     };
 
-    this.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion, paginate, page_offset, page_timestamp) {
+    this.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion,
+                                    paginate, pageOffset, pageTimestamp) {
         return self.callOrChain({
             type: RequestType.GET_ASSET_DIGEST,
             message: new RequestMessages.GetAssetDigestMessage({
@@ -729,8 +730,8 @@ function Client(options) {
                 locale: locale,
                 app_version: appVersion,
                 paginate: paginate,
-                page_offset: page_offset,
-                page_timestamp: page_timestamp,
+                page_offset: pageOffset,
+                page_timestamp: pageTimestamp,
             }),
             responseType: Responses.GetAssetDigestResponse
         });
@@ -854,12 +855,12 @@ function Client(options) {
         });
     };
 
-    this.updateNotificationStatus = function(notification_ids, create_timestamp_ms, state) {
+    this.updateNotificationStatus = function(notificationIds, createTimestampMs, state) {
         return self.callOrChain({
             type: RequestType.UPDATE_NOTIFICATION_STATUS,
             message: new RequestMessages.UpdateNotificationMessage({
-                notification_ids: notification_ids,
-                create_timestamp_ms: create_timestamp_ms,
+                notification_ids: notificationIds,
+                create_timestamp_ms: createTimestampMs,
                 state: state,
             }),
             responseType: Responses.UpdateNotificationResponse
@@ -1149,17 +1150,17 @@ function Client(options) {
      */
     this.tryCallRPC = function(requests, envelope) {
         return self.buildSignedEnvelope(requests, envelope)
-            .then(signedEnvelope => {
-                return self.request.postAsync({
+            .then(signedEnvelope =>
+                self.request.postAsync({
                     url: self.endpoint,
                     proxy: self.options.proxy,
                     body: signedEnvelope.toBuffer()
                 })
                 .then(response => ({ signedEnvelope: signedEnvelope, response: response }))
-            })
+            )
             .then(result => {
-                let signedEnvelope = result.signedEnvelope;
-                let response = result.response;
+                const signedEnvelope = result.signedEnvelope;
+                const response = result.response;
                 if (response.statusCode !== 200) {
                     if (response.statusCode >= 400 && response.statusCode < 500) {
                         /* These are permanent errors so throw StopError */
@@ -1219,11 +1220,9 @@ function Client(options) {
                 }
 
                 /* Throttling, retry same request later */
-                if (responseEnvelope.status_code === 52 && self.endpoint != INITIAL_ENDPOINT) {
+                if (responseEnvelope.status_code === 52 && self.endpoint !== INITIAL_ENDPOINT) {
                     signedEnvelope.platform_requests = [];
-                    return Promise.delay(2000).then(() => {
-                        return self.callRPC(requests, signedEnvelope);
-                    });
+                    return Promise.delay(2000).then(() => self.callRPC(requests, signedEnvelope));
                 }
 
                 /* These codes indicate invalid input, no use in retrying so throw StopError */
