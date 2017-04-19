@@ -107,15 +107,16 @@ function Client(options) {
         let signatureVersion = '0.' + ((+self.options.version) / 100).toFixed(0);
         signatureVersion += '.' + (+self.options.version % 100);
 
-        Signature.signature.register(self, self.options.deviceId);
+        self.signatureGenerator = new Signature.signature.Generator();
+        self.signatureGenerator.register(self, self.options.deviceId);
 
-        self.signatureBuilder = new Signature.encryption.Builder({
+        self.signatureEncryption = new Signature.encryption.Builder({
             protos: POGOProtos,
             version: signatureVersion,
             initTime: (new Date().getTime() - 3500 - Math.random() * 5000),
         });
-        self.signatureBuilder.encryptAsync = Promise.promisify(self.signatureBuilder.encrypt,
-                                                                { context: self.signatureBuilder });
+        self.signatureEncryption.encryptAsync = Promise.promisify(self.signatureEncryption.encrypt,
+                                                                { context: self.signatureEncryption });
 
         let promise = Promise.resolve(true);
 
@@ -161,9 +162,12 @@ function Client(options) {
      * Clean up ressources, like timer and token
      */
     this.cleanUp = function() {
-        Signature.signature.clean();
+        self.signatureGenerator.clean();
+        self.signatureGenerator = null;
         self.options.authToken = null;
         self.authTicket = null;
+        self.batchRequests = [];
+        self.signatureEncryption = null;
     };
 
     /**
@@ -200,7 +204,7 @@ function Client(options) {
      * @return {Object}
      */
     this.getSignatureRateInfo = function() {
-        return self.signatureBuilder.rateInfos;
+        return self.signatureEncryption.rateInfos;
     };
 
     /*
@@ -1064,20 +1068,20 @@ function Client(options) {
                 self.lastHashingKeyIndex = (self.lastHashingKeyIndex + 1) % self.options.hashingKey.length;
             }
 
-            self.signatureBuilder.useHashingServer(self.options.hashingServer + self.hashingVersion, key);
+            self.signatureEncryption.useHashingServer(self.options.hashingServer + self.hashingVersion, key);
         }
 
-        self.signatureBuilder.setAuthTicket(authTicket);
+        self.signatureEncryption.setAuthTicket(authTicket);
 
         if (typeof self.options.signatureInfo === 'function') {
-            self.signatureBuilder.setFields(self.options.signatureInfo(envelope));
+            self.signatureEncryption.setFields(self.options.signatureInfo(envelope));
         } else if (self.options.signatureInfo) {
-            self.signatureBuilder.setFields(self.options.signatureInfo);
+            self.signatureEncryption.setFields(self.options.signatureInfo);
         }
 
-        self.signatureBuilder.setLocation(envelope.latitude, envelope.longitude, envelope.accuracy);
+        self.signatureEncryption.setLocation(envelope.latitude, envelope.longitude, envelope.accuracy);
 
-        return retry(() => self.signatureBuilder.encryptAsync(envelope.requests)
+        return retry(() => self.signatureEncryption.encryptAsync(envelope.requests)
                         .catch(err => {
                             if (err.name === 'HashServerError' && err.retry) {
                                 throw err;
