@@ -194,7 +194,7 @@ function Client(options) {
      * @return {Promise}
      */
     this.batchCall = function() {
-        var p = self.callRPC(self.batchRequests || []);
+        const p = self.callRPC(self.batchRequests || []);
         self.batchClear();
         return p;
     };
@@ -946,7 +946,7 @@ function Client(options) {
      * @return {POGOProtos.Networking.Envelopes.RequestEnvelope}
      */
     this.buildEnvelope = function(requests) {
-        var envelopeData = {
+        const envelopeData = {
             status_code: 2,
             request_id: self.getRequestID(),
             ms_since_last_locationfix: 100 + Math.floor(Math.random() * 900)
@@ -972,7 +972,7 @@ function Client(options) {
 
         if (requests) {
             envelopeData.requests = requests.map(r => {
-                var requestData = {
+                const requestData = {
                     request_type: r.type
                 };
 
@@ -1179,7 +1179,7 @@ function Client(options) {
                     }
                 }
 
-                var responseEnvelope;
+                let responseEnvelope;
                 try {
                     responseEnvelope =
                         POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(response.body);
@@ -1244,17 +1244,17 @@ function Client(options) {
                     );
                 }
 
-                var responses = [];
+                let responses = [];
 
                 if (requests) {
                     if (requests.length !== responseEnvelope.returns.length) {
                         throw new Error('Request count does not match response count');
                     }
 
-                    for (var i = 0; i < responseEnvelope.returns.length; i++) {
+                    for (let i = 0; i < responseEnvelope.returns.length; i++) {
                         if (!requests[i].responseType) continue;
 
-                        var responseMessage;
+                        let responseMessage;
                         try {
                             responseMessage = requests[i].responseType.decode(
                                 responseEnvelope.returns[i]
