@@ -120,17 +120,20 @@ function Client(options) {
 
         let promise = Promise.resolve(true);
 
-        // login
+        // Handle login here if no auth token is provided
         if (!self.options.authToken) {
-            if (!self.options.username) throw new Error('No token nor credentials provided.');
+            if (!self.options.username || !self.options.password) throw new Error('No token nor credentials provided.');
             if (self.options.authType === 'ptc') {
                 self.login = new PTCLogin();
-            } else {
+            } else if (self.options.authType === 'google') {
                 self.login = new GoogleLogin();
+            } else {
+                throw new Error('Invalid auth type provided.');
             }
             if (self.options.proxy) self.login.setProxy(self.options.proxy);
 
-            promise = promise.then(() => self.login.login(self.options.username, self.options.password)
+            promise = promise
+                        .then(() => self.login.login(self.options.username, self.options.password)
                         .then(token => {
                             self.options.authToken = token;
                         }));
@@ -922,7 +925,8 @@ function Client(options) {
 
     /**
      * Generate auth_info object from authToken
-     * @return {object} auth_info to put in envelop
+     * @private
+     * @return {object} auth_info to use in envelope
      */
     this.getAuthInfoObject = function() {
         let unknown2 = 0;
@@ -1209,18 +1213,19 @@ function Client(options) {
                     }
                 });
 
-                /* Auth expire, auto relogin */
+                /* Auth expired, auto relogin */
                 if (responseEnvelope.status_code === 102 && self.login) {
                     signedEnvelope.platform_requests = [];
                     self.login.reset();
-                    return self.login.login(self.options.username, self.options.password)
-                    .then(token => {
-                        self.options.authToken = token;
-                        self.authTicket = null;
-                        signedEnvelope.auth_ticket = null;
-                        signedEnvelope.auth_info = this.getAuthInfoObject();
-                        return self.callRPC(requests, signedEnvelope);
-                    });
+                    return self.login
+                                .login(self.options.username, self.options.password)
+                                .then(token => {
+                                    self.options.authToken = token;
+                                    self.authTicket = null;
+                                    signedEnvelope.auth_ticket = null;
+                                    signedEnvelope.auth_info = this.getAuthInfoObject();
+                                    return self.callRPC(requests, signedEnvelope);
+                                });
                 }
 
                 /* Throttling, retry same request later */
