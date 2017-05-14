@@ -1,7 +1,6 @@
 'use strict';
 
-const EventEmitter = require('events').EventEmitter,
-    Long = require('long'),
+const Long = require('long'),
     POGOProtos = require('node-pogo-protos'),
     Signature = require('pogobuf-signature'),
     Promise = require('bluebird'),
@@ -21,7 +20,7 @@ const RequestType = POGOProtos.Networking.Requests.RequestType,
     Responses = POGOProtos.Networking.Responses;
 
 const INITIAL_ENDPOINT = 'https://pgorelease.nianticlabs.com/plfe/rpc';
-const INITIAL_PTR8 = '90f6a704505bccac73cec99b07794993e6fd5a12';
+const INITIAL_PTR8 = '15c79df0558009a4242518d2ab65de2a59e09499';
 
 // See pogobuf wiki for description of options
 const defaultOptions = {
@@ -31,8 +30,6 @@ const defaultOptions = {
     password: null,
     downloadSettings: true,
     appSimulation: true,
-    mapObjectsThrottling: true,
-    mapObjectsMinDelay: 5000,
     proxy: null,
     maxTries: 5,
     automaticLongConversion: true,
@@ -110,29 +107,33 @@ function Client(options) {
         let signatureVersion = '0.' + ((+self.options.version) / 100).toFixed(0);
         signatureVersion += '.' + (+self.options.version % 100);
 
-        Signature.signature.register(self, self.options.deviceId);
+        self.signatureGenerator = new Signature.signature.Generator();
+        self.signatureGenerator.register(self, self.options.deviceId);
 
-        self.signatureBuilder = new Signature.encryption.Builder({
+        self.signatureEncryption = new Signature.encryption.Builder({
             protos: POGOProtos,
             version: signatureVersion,
             initTime: (new Date().getTime() - 3500 - Math.random() * 5000),
         });
-        self.signatureBuilder.encryptAsync = Promise.promisify(self.signatureBuilder.encrypt,
-                                                                { context: self.signatureBuilder });
+        self.signatureEncryption.encryptAsync = Promise.promisify(self.signatureEncryption.encrypt,
+                                                                { context: self.signatureEncryption });
 
         let promise = Promise.resolve(true);
 
-        // login
+        // Handle login here if no auth token is provided
         if (!self.options.authToken) {
-            if (!self.options.username) throw new Error('No token nor credentials provided.');
+            if (!self.options.username || !self.options.password) throw new Error('No token nor credentials provided.');
             if (self.options.authType === 'ptc') {
                 self.login = new PTCLogin();
-            } else {
+            } else if (self.options.authType === 'google') {
                 self.login = new GoogleLogin();
+            } else {
+                throw new Error('Invalid auth type provided.');
             }
             if (self.options.proxy) self.login.setProxy(self.options.proxy);
 
-            promise = promise.then(() => self.login.login(self.options.username, self.options.password)
+            promise = promise
+                        .then(() => self.login.login(self.options.username, self.options.password)
                         .then(token => {
                             self.options.authToken = token;
                         }));
@@ -154,8 +155,7 @@ function Client(options) {
                                         .getInventory()
                                         .checkAwardedBadges()
                                         .downloadSettings()
-                                        .batchCall())
-                        .then(self.processInitialResponse);
+                                        .batchCall());
         }
 
         return promise;
@@ -165,9 +165,12 @@ function Client(options) {
      * Clean up ressources, like timer and token
      */
     this.cleanUp = function() {
-        Signature.signature.clean();
+        self.signatureGenerator.clean();
+        self.signatureGenerator = null;
         self.options.authToken = null;
         self.authTicket = null;
+        self.batchRequests = [];
+        self.signatureEncryption = null;
     };
 
     /**
@@ -194,7 +197,7 @@ function Client(options) {
      * @return {Promise}
      */
     this.batchCall = function() {
-        var p = self.callRPC(self.batchRequests || []);
+        const p = self.callRPC(self.batchRequests || []);
         self.batchClear();
         return p;
     };
@@ -204,7 +207,7 @@ function Client(options) {
      * @return {Object}
      */
     this.getSignatureRateInfo = function() {
-        return self.signatureBuilder.rateInfos;
+        return self.signatureEncryption.rateInfos;
     };
 
     /*
@@ -723,7 +726,8 @@ function Client(options) {
         });
     };
 
-    this.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion, paginate, page_offset, page_timestamp) {
+    this.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion,
+                                    paginate, pageOffset, pageTimestamp) {
         return self.callOrChain({
             type: RequestType.GET_ASSET_DIGEST,
             message: new RequestMessages.GetAssetDigestMessage({
@@ -733,8 +737,8 @@ function Client(options) {
                 locale: locale,
                 app_version: appVersion,
                 paginate: paginate,
-                page_offset: page_offset,
-                page_timestamp: page_timestamp,
+                page_offset: pageOffset,
+                page_timestamp: pageTimestamp,
             }),
             responseType: Responses.GetAssetDigestResponse
         });
@@ -858,12 +862,12 @@ function Client(options) {
         });
     };
 
-    this.updateNotificationStatus = function(notification_ids, create_timestamp_ms, state) {
+    this.updateNotificationStatus = function(notificationIds, createTimestampMs, state) {
         return self.callOrChain({
             type: RequestType.UPDATE_NOTIFICATION_STATUS,
             message: new RequestMessages.UpdateNotificationMessage({
-                notification_ids: notification_ids,
-                create_timestamp_ms: create_timestamp_ms,
+                notification_ids: notificationIds,
+                create_timestamp_ms: createTimestampMs,
                 state: state,
             }),
             responseType: Responses.UpdateNotificationResponse
@@ -884,6 +888,7 @@ function Client(options) {
         gzip: true,
         encoding: null,
     });
+    Promise.promisifyAll(this.request);
 
     this.options = Object.assign({}, defaultOptions, options || {});
     this.authTicket = null;
@@ -920,7 +925,8 @@ function Client(options) {
 
     /**
      * Generate auth_info object from authToken
-     * @return {object} auth_info to put in envelop
+     * @private
+     * @return {object} auth_info to use in envelope
      */
     this.getAuthInfoObject = function() {
         let unknown2 = 0;
@@ -944,7 +950,7 @@ function Client(options) {
      * @return {POGOProtos.Networking.Envelopes.RequestEnvelope}
      */
     this.buildEnvelope = function(requests) {
-        var envelopeData = {
+        const envelopeData = {
             status_code: 2,
             request_id: self.getRequestID(),
             ms_since_last_locationfix: 100 + Math.floor(Math.random() * 900)
@@ -969,17 +975,8 @@ function Client(options) {
         }
 
         if (requests) {
-            self.emit('request', {
-                request_id: envelopeData.request_id.toString(),
-                requests: requests.map(r => ({
-                    name: Utils.getEnumKeyByValue(RequestType, r.type),
-                    type: r.type,
-                    data: r.message
-                }))
-            });
-
             envelopeData.requests = requests.map(r => {
-                var requestData = {
+                const requestData = {
                     request_type: r.type
                 };
 
@@ -990,8 +987,6 @@ function Client(options) {
                 return requestData;
             });
         }
-
-        self.emit('raw-request', envelopeData);
 
         return new POGOProtos.Networking.Envelopes.RequestEnvelope(envelopeData);
     };
@@ -1077,22 +1072,22 @@ function Client(options) {
                 self.lastHashingKeyIndex = (self.lastHashingKeyIndex + 1) % self.options.hashingKey.length;
             }
 
-            self.signatureBuilder.useHashingServer(self.options.hashingServer + self.hashingVersion, key);
+            self.signatureEncryption.useHashingServer(self.options.hashingServer + self.hashingVersion, key);
         }
 
-        self.signatureBuilder.setAuthTicket(authTicket);
+        self.signatureEncryption.setAuthTicket(authTicket);
 
         if (typeof self.options.signatureInfo === 'function') {
-            self.signatureBuilder.setFields(self.options.signatureInfo(envelope));
+            self.signatureEncryption.setFields(self.options.signatureInfo(envelope));
         } else if (self.options.signatureInfo) {
-            self.signatureBuilder.setFields(self.options.signatureInfo);
+            self.signatureEncryption.setFields(self.options.signatureInfo);
         }
 
-        self.signatureBuilder.setLocation(envelope.latitude, envelope.longitude, envelope.accuracy);
+        self.signatureEncryption.setLocation(envelope.latitude, envelope.longitude, envelope.accuracy);
 
-        return retry(() => self.signatureBuilder.encryptAsync(envelope.requests)
+        return retry(() => self.signatureEncryption.encryptAsync(envelope.requests)
                         .catch(err => {
-                            if (err.name === 'HashServerError' && err.message === 'Request limited') {
+                            if (err.name === 'HashServerError' && err.retry) {
                                 throw err;
                             } else {
                                 throw new retry.StopError(err);
@@ -1130,12 +1125,6 @@ function Client(options) {
 
             self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
 
-            self.emit('endpoint-response', {
-                status_code: responseEnvelope.status_code,
-                request_id: responseEnvelope.request_id.toString(),
-                api_url: responseEnvelope.api_url
-            });
-
             signedEnvelope.platform_requests = [];
             resolve(self.callRPC(requests, signedEnvelope));
         });
@@ -1150,19 +1139,6 @@ function Client(options) {
      *     or true if there aren't any
      */
     this.callRPC = function(requests, envelope) {
-        // If the requests include a map objects request, make sure the minimum delay
-        // since the last call has passed
-        if (requests.some(r => r.type === RequestType.GET_MAP_OBJECTS)) {
-            var now = new Date().getTime(),
-                delayNeeded = self.lastMapObjectsCall + self.options.mapObjectsMinDelay - now;
-
-            if (delayNeeded > 0 && self.options.mapObjectsThrottling) {
-                return Promise.delay(delayNeeded).then(() => self.callRPC(requests, envelope));
-            }
-
-            self.lastMapObjectsCall = now;
-        }
-
         if (self.options.maxTries <= 1) return self.tryCallRPC(requests, envelope);
 
         return retry(() => self.tryCallRPC(requests, envelope), {
@@ -1182,187 +1158,132 @@ function Client(options) {
      */
     this.tryCallRPC = function(requests, envelope) {
         return self.buildSignedEnvelope(requests, envelope)
-            .then(signedEnvelope => new Promise((resolve, reject) => {
-                self.request({
-                    method: 'POST',
+            .then(signedEnvelope =>
+                self.request.postAsync({
                     url: self.endpoint,
                     proxy: self.options.proxy,
                     body: signedEnvelope.toBuffer()
-                }, (err, response, body) => {
-                    if (err) {
-                        reject(Error(err));
-                        return;
+                })
+                .then(response => ({ signedEnvelope: signedEnvelope, response: response }))
+            )
+            .then(result => {
+                const signedEnvelope = result.signedEnvelope;
+                const response = result.response;
+                if (response.statusCode !== 200) {
+                    if (response.statusCode >= 400 && response.statusCode < 500) {
+                        /* These are permanent errors so throw StopError */
+                        throw new retry.StopError(
+                            `Status code ${response.statusCode} received from HTTPS request`
+                        );
+                    } else {
+                        /* Anything else might be recoverable so throw regular Error */
+                        throw new Error(
+                            `Status code ${response.statusCode} received from HTTPS request`
+                        );
                     }
+                }
 
-                    if (response.statusCode !== 200) {
-                        if (response.statusCode >= 400 && response.statusCode < 500) {
-                            /* These are permanent errors so throw StopError */
-                            reject(new retry.StopError(
-                                `Status code ${response.statusCode} received from HTTPS request`
-                            ));
-                        } else {
-                            /* Anything else might be recoverable so throw regular Error */
-                            reject(Error(
-                                `Status code ${response.statusCode} received from HTTPS request`
-                            ));
-                        }
-                        return;
+                let responseEnvelope;
+                try {
+                    responseEnvelope =
+                        POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(response.body);
+                } catch (e) {
+                    if (e.decoded) {
+                        responseEnvelope = e.decoded;
+                    } else {
+                        throw new retry.StopError(e);
                     }
+                }
 
-                    var responseEnvelope;
-                    try {
-                        responseEnvelope =
-                            POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(body);
-                    } catch (e) {
-                        self.emit('parse-envelope-error', body, e);
-                        if (e.decoded) {
-                            responseEnvelope = e.decoded;
-                        } else {
-                            reject(new retry.StopError(e));
-                            return;
-                        }
+                if (responseEnvelope.error) {
+                    throw new retry.StopError(responseEnvelope.error);
+                }
+
+                if (responseEnvelope.auth_ticket) self.authTicket = responseEnvelope.auth_ticket;
+
+                if (responseEnvelope.status_code === 53 ||
+                    (responseEnvelope.status_code === 2 && self.endpoint === INITIAL_ENDPOINT)) {
+                    return self.redirect(requests, signedEnvelope, responseEnvelope);
+                }
+
+                responseEnvelope.platform_returns.forEach(platformReturn => {
+                    if (platformReturn.type === PlatformRequestType.UNKNOWN_PTR_8) {
+                        const ptr8 = PlatformResponses.UnknownPtr8Response.decode(platformReturn.response);
+                        if (ptr8) self.ptr8 = ptr8.message;
                     }
-
-                    self.emit('raw-response', responseEnvelope);
-
-                    if (responseEnvelope.error) {
-                        reject(new retry.StopError(responseEnvelope.error));
-                        return;
-                    }
-
-                    if (responseEnvelope.auth_ticket) self.authTicket = responseEnvelope.auth_ticket;
-
-                    if (responseEnvelope.status_code === 53 ||
-                        (responseEnvelope.status_code === 2 && self.endpoint === INITIAL_ENDPOINT)) {
-                        resolve(self.redirect(requests, signedEnvelope, responseEnvelope));
-                        return;
-                    }
-
-                    responseEnvelope.platform_returns.forEach(platformReturn => {
-                        if (platformReturn.type === PlatformRequestType.UNKNOWN_PTR_8) {
-                            const ptr8 = PlatformResponses.UnknownPtr8Response.decode(platformReturn.response);
-                            if (ptr8) self.ptr8 = ptr8.message;
-                        }
-                    });
-
-                    /* Auth expire, auto relogin */
-                    if (responseEnvelope.status_code === 102 && self.login) {
-                        signedEnvelope.platform_requests = [];
-                        self.login.reset();
-                        self.login.login(self.options.username, self.options.password)
-                        .then(token => {
-                            self.options.authToken = token;
-                            self.authTicket = null;
-                            signedEnvelope.auth_ticket = null;
-                            signedEnvelope.auth_info = this.getAuthInfoObject();
-                            resolve(self.callRPC(requests, signedEnvelope));
-                        })
-                        .catch(e => {
-                            reject(e);
-                        })
-                        return;
-                    }
-
-                    /* Throttling, retry same request later */
-                    if (responseEnvelope.status_code === 52 && self.endpoint != INITIAL_ENDPOINT) {
-                        signedEnvelope.platform_requests = [];
-                        Promise.delay(2000).then(() => {
-                            resolve(self.callRPC(requests, signedEnvelope));
-                        });
-                        return;
-                    }
-
-                    /* These codes indicate invalid input, no use in retrying so throw StopError */
-                    if (responseEnvelope.status_code === 3 || responseEnvelope.status_code === 51 ||
-                        responseEnvelope.status_code >= 100) {
-                        reject(new retry.StopError(
-                            `Status code ${responseEnvelope.status_code} received from RPC`
-                        ));
-                    }
-
-                    /* These can be temporary so throw regular Error */
-                    if (responseEnvelope.status_code !== 2 && responseEnvelope.status_code !== 1) {
-                        reject(Error(
-                            `Status code ${responseEnvelope.status_code} received from RPC`
-                        ));
-                        return;
-                    }
-
-                    var responses = [];
-
-                    if (requests) {
-                        if (requests.length !== responseEnvelope.returns.length) {
-                            reject(Error('Request count does not match response count'));
-                            return;
-                        }
-
-                        for (var i = 0; i < responseEnvelope.returns.length; i++) {
-                            if (!requests[i].responseType) continue;
-
-                            var responseMessage;
-                            try {
-                                responseMessage = requests[i].responseType.decode(
-                                    responseEnvelope.returns[i]
-                                );
-                            } catch (e) {
-                                self.emit('parse-response-error',
-                                    responseEnvelope.returns[i].toBuffer(), e);
-                                reject(new retry.StopError(e));
-                                return;
-                            }
-
-                            if (self.options.includeRequestTypeInResponse) {
-                                // eslint-disable-next-line no-underscore-dangle
-                                responseMessage._requestType = requests[i].type;
-                            }
-                            responses.push(responseMessage);
-                        }
-                    }
-
-                    self.emit('response', {
-                        status_code: responseEnvelope.status_code,
-                        request_id: responseEnvelope.request_id.toString(),
-                        responses: responses.map((r, h) => ({
-                            name: Utils.getEnumKeyByValue(
-                                RequestType, requests[h].type
-                            ),
-                            type: requests[h].type,
-                            data: r
-                        }))
-                    });
-
-                    if (self.options.automaticLongConversion) {
-                        responses = Utils.convertLongs(responses);
-                    }
-
-                    if (!responses.length) resolve(true);
-                    else if (responses.length === 1) resolve(responses[0]);
-                    else resolve(responses);
                 });
-            }));
-    };
 
-    /**
-     * Processes the data received from the initial API call during init().
-     * @private
-     * @param {Object} responses - Response from API call
-     * @return {Object} responses - Unomdified response (to send back to Promise)
-     */
-    this.processInitialResponse = function(responses) {
-        // Extract the minimum delay of getMapObjects()
-        if (responses.length >= 5) {
-            const settingsResponse = responses[5];
-            if (settingsResponse &&
-                !settingsResponse.error &&
-                settingsResponse.settings &&
-                settingsResponse.settings.map_settings &&
-                settingsResponse.settings.map_settings.get_map_objects_min_refresh_seconds
-            ) {
-                self.setOption('mapObjectsMinDelay',
-                    settingsResponse.settings.map_settings.get_map_objects_min_refresh_seconds * 1000);
-            }
-        }
-        return responses;
+                /* Auth expired, auto relogin */
+                if (responseEnvelope.status_code === 102 && self.login) {
+                    signedEnvelope.platform_requests = [];
+                    self.login.reset();
+                    return self.login
+                                .login(self.options.username, self.options.password)
+                                .then(token => {
+                                    self.options.authToken = token;
+                                    self.authTicket = null;
+                                    signedEnvelope.auth_ticket = null;
+                                    signedEnvelope.auth_info = this.getAuthInfoObject();
+                                    return self.callRPC(requests, signedEnvelope);
+                                });
+                }
+
+                /* Throttling, retry same request later */
+                if (responseEnvelope.status_code === 52 && self.endpoint !== INITIAL_ENDPOINT) {
+                    signedEnvelope.platform_requests = [];
+                    return Promise.delay(2000).then(() => self.callRPC(requests, signedEnvelope));
+                }
+
+                /* These codes indicate invalid input, no use in retrying so throw StopError */
+                if (responseEnvelope.status_code === 3 || responseEnvelope.status_code === 51 ||
+                    responseEnvelope.status_code >= 100) {
+                    throw new retry.StopError(
+                        `Status code ${responseEnvelope.status_code} received from RPC`
+                    );
+                }
+
+                /* These can be temporary so throw regular Error */
+                if (responseEnvelope.status_code !== 2 && responseEnvelope.status_code !== 1) {
+                    throw new Error(
+                        `Status code ${responseEnvelope.status_code} received from RPC`
+                    );
+                }
+
+                let responses = [];
+
+                if (requests) {
+                    if (requests.length !== responseEnvelope.returns.length) {
+                        throw new Error('Request count does not match response count');
+                    }
+
+                    for (let i = 0; i < responseEnvelope.returns.length; i++) {
+                        if (!requests[i].responseType) continue;
+
+                        let responseMessage;
+                        try {
+                            responseMessage = requests[i].responseType.decode(
+                                responseEnvelope.returns[i]
+                            );
+                        } catch (e) {
+                            throw new retry.StopError(e);
+                        }
+
+                        if (self.options.includeRequestTypeInResponse) {
+                            // eslint-disable-next-line no-underscore-dangle
+                            responseMessage._requestType = requests[i].type;
+                        }
+                        responses.push(responseMessage);
+                    }
+                }
+
+                if (self.options.automaticLongConversion) {
+                    responses = Utils.convertLongs(responses);
+                }
+
+                if (!responses.length) return true;
+                else if (responses.length === 1) return responses[0];
+                return responses;
+            });
     };
 
     /**
@@ -1427,35 +1348,6 @@ function Client(options) {
     };
 
     /**
-     * Sets the mapObjectsThrottling option.
-     * @deprecated Use options object or setOption() instead
-     * @param {boolean} enable
-     */
-    this.setMapObjectsThrottlingEnabled = function(enable) {
-        self.setOption('mapObjectsThrottling', enable);
-    };
-
-    /**
-     * Sets a callback to be called for any envelope or request just before it is sent to
-     * the server (mostly for debugging purposes).
-     * @deprecated Use the raw-request event instead
-     * @param {function} callback - function to call on requests
-     */
-    this.setRequestCallback = function(callback) {
-        self.on('raw-request', callback);
-    };
-
-    /**
-     * Sets a callback to be called for any envelope or response just after it has been
-     * received from the server (mostly for debugging purposes).
-     * @deprecated Use the raw-response event instead
-     * @param {function} callback - function to call on responses
-     */
-    this.setResponseCallback = function(callback) {
-        self.on('raw-response', callback);
-    };
-
-    /**
      * Sets the automaticLongConversion option.
      * @deprecated Use options object or setOption() instead
      * @param {boolean} enable
@@ -1465,7 +1357,5 @@ function Client(options) {
         self.setOption('automaticLongConversion', enable);
     };
 }
-
-Client.prototype = Object.create(EventEmitter.prototype);
 
 module.exports = Client;

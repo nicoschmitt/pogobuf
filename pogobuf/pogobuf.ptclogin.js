@@ -1,6 +1,8 @@
 /*eslint no-underscore-dangle: ["error", { "allow": ["_eventId"] }]*/
 'use strict';
 
+/* eslint no-underscore-dangle: ["error", { "allow": ["_eventId"] }] */
+
 const request = require('request'),
     Promise = require('bluebird');
 
@@ -109,8 +111,8 @@ function PTCLogin() {
         })
         .then(response => {
             if (response.headers['set-cookie'] && response.headers['set-cookie'].length > 0) {
-                const cookieString = response.headers['set-cookie'].filter(c => c.startsWith('CASTGC'));
-                if (cookieString) {
+                var cookieString = response.headers['set-cookie'].filter(c => c.startsWith('CASTGC'));
+                if (cookieString && cookieString.length > 0) {
                     const cookie = request.cookie(cookieString[0]);
                     return cookie.value;
                 }
