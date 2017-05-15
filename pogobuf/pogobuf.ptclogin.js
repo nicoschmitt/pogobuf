@@ -116,7 +116,18 @@ function PTCLogin() {
                     return cookie.value;
                 }
             }
-            throw new Error('Unable to parse token in response from PTC login.');
+
+            // something went wrong
+            if (response.body) {
+                if (response.body.indexOf('password is incorrect') >= 0) {
+                    throw new Error('Invalid PTC login or password.');
+                } if (response.body.indexOf('failed to log in correctly too many times') >= 0) {
+                    throw new Error('Account temporarily disabled, please check your password.');
+                }
+            }
+
+            // don't know what happend
+            throw new Error('Something went wrong during PTC login.');
         });
     };
 
