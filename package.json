@@ -1,31 +1,30 @@
 {
-  "name": "pogobuf",
-  "version": "1.10.0",
-  "description": "Pokémon Go Client Library",
+  "name": "pogobuf-vnext",
+  "version": "2.0.3",
+  "description": "Pokémon Go Client Library (vnext)",
   "main": "pogobuf/pogobuf.js",
   "typings": "./pogobuf.d.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cyraxx/pogobuf.git"
+    "url": "git+https://github.com/pogosandbox/pogobuf.git"
   },
   "keywords": [
     "pokemon",
     "pokemongo",
     "pogo",
     "api",
-    "niantic"
+    "niantic",
+    "beta",
+    "vnext"
   ],
-  "author": "Andreas Reich (https://github.com/cyraxx)",
+  "author": "niico (https://github.com/pogosandbox)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/cyraxx/pogobuf/issues"
+    "url": "https://github.com/pogosandbox/pogobuf/issues"
   },
-  "homepage": "https://github.com/cyraxx/pogobuf#readme",
+  "homepage": "https://github.com/pogosandbox/pogobuf#readme",
   "engines": {
-    "node": ">=4.0.0"
+    "node": ">=7.0.0"
   },
   "dependencies": {
     "bluebird": "^3.5.0",
@@ -33,8 +32,8 @@
     "bytebuffer": "^5.0.1",
     "gpsoauth": "^1.0.0",
     "long": "^3.2.0",
-    "node-pogo-protos": "pogosandbox/node-pogo-protos#2.9.1",
-    "pogobuf-signature": "pogosandbox/pogobuf-signature#dev",
+    "node-pogo-protos": "^2.10.0",
+    "pogobuf-signature": "^2.2.0",
     "request": "^2.81.0",
     "s2-geometry": "^1.2.9"
   },
