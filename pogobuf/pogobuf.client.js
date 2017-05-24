@@ -170,6 +170,7 @@ function Client(options) {
         self.options.authToken = null;
         self.authTicket = null;
         self.batchRequests = [];
+        self.batchPftmRequests = [];
         self.signatureEncryption = null;
     };
 
@@ -181,6 +182,7 @@ function Client(options) {
     this.batchStart = function() {
         if (!self.batchRequests) {
             self.batchRequests = [];
+            self.batchPftmRequests = [];
         }
         return self;
     };
@@ -190,6 +192,7 @@ function Client(options) {
      */
     this.batchClear = function() {
         delete self.batchRequests;
+        delete self.batchPftmRequests;
     };
 
     /**
@@ -874,6 +877,19 @@ function Client(options) {
         });
     };
 
+
+    /*
+     * Advanced user only
+     */
+    this.batchAddPlatformRequest = function(type, message) {
+        if (!self.batchPftmRequests) self.batchPftmRequests = [];
+        
+        self.batchPftmRequests.push({ 
+            type: type,
+            message: message,
+        });
+    }
+
     /*
      * INTERNAL STUFF
      */
@@ -1058,6 +1074,13 @@ function Client(options) {
                 new PlatformRequestMessages.UnknownPtr8Request({
                     message: self.ptr8,
                 }));
+        }
+
+        if (self.batchPftmRequests && self.batchPftmRequests.length > 0) {
+            for (let i = 0; i < self.batchPftmRequests.length; i++) {
+                let ptfm = self.batchPftmRequests[i];
+                self.addPlatformRequestToEnvelope(envelope, ptfm.type, ptfm.message);
+            }
         }
 
         let authTicket = envelope.auth_ticket;
