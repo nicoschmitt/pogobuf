@@ -1274,7 +1274,7 @@ function Client(options) {
 
                 let responses = [];
 
-                if (requests) {
+                if (requests && requests.length > 0) {
                     if (requests.length !== responseEnvelope.returns.length) {
                         throw new Error('Request count does not match response count');
                     }
@@ -1297,6 +1297,15 @@ function Client(options) {
                         }
                         responses.push(responseMessage);
                     }
+                } else {
+                    responseEnvelope.platform_returns.forEach(platformReturn => {
+                        if (platformReturn.type === PlatformRequestType.GET_STORE_ITEMS) {
+                            const store = PlatformResponses.GetStoreItemsResponse.decode(platformReturn.response);
+                            store._requestType = -1,
+                            store._ptfmRequestType = PlatformRequestType.GET_STORE_ITEMS,
+                            responses.push(store);
+                        }
+                    });
                 }
 
                 if (self.options.automaticLongConversion) {
