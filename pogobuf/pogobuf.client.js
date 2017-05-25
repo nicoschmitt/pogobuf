@@ -42,6 +42,15 @@ const defaultOptions = {
 };
 
 /**
+ * Helper function to encode proto
+ * @param {Messsage} proto 
+ * @return {Buffer} buffer
+ */
+function encode(proto) {
+    return proto.constructor.encode(proto).finish();
+}
+
+/**
  * Pokémon Go RPC client.
  * @class Client
  * @param {Object} [options] - Client options (see pogobuf wiki for documentation)
@@ -217,7 +226,7 @@ function Client(options) {
     this.getPlayer = function(country, language, timezone) {
         return self.callOrChain({
             type: RequestType.GET_PLAYER,
-            message: new RequestMessages.GetPlayerMessage({
+            message: RequestMessages.GetPlayerMessage.fromObject({
                 player_locale: {
                     country: country,
                     language: language,
@@ -231,7 +240,7 @@ function Client(options) {
     this.getInventory = function(lastTimestamp) {
         return self.callOrChain({
             type: RequestType.GET_INVENTORY,
-            message: new RequestMessages.GetInventoryMessage({
+            message: RequestMessages.GetInventoryMessage.fromObject({
                 last_timestamp_ms: lastTimestamp
             }),
             responseType: Responses.GetInventoryResponse
@@ -241,7 +250,7 @@ function Client(options) {
     this.downloadSettings = function(hash) {
         return self.callOrChain({
             type: RequestType.DOWNLOAD_SETTINGS,
-            message: new RequestMessages.DownloadSettingsMessage({
+            message: RequestMessages.DownloadSettingsMessage.fromObject({
                 hash: hash
             }),
             responseType: Responses.DownloadSettingsResponse
@@ -251,7 +260,7 @@ function Client(options) {
     this.downloadItemTemplates = function(paginate, pageOffset, pageTimestamp) {
         return self.callOrChain({
             type: RequestType.DOWNLOAD_ITEM_TEMPLATES,
-            message: new RequestMessages.DownloadItemTemplatesMessage({
+            message: RequestMessages.DownloadItemTemplatesMessage.fromObject({
                 paginate: paginate,
                 page_offset: pageOffset,
                 page_timestamp: pageTimestamp
@@ -263,7 +272,7 @@ function Client(options) {
     this.downloadRemoteConfigVersion = function(platform, deviceManufacturer, deviceModel, locale, appVersion) {
         return self.callOrChain({
             type: RequestType.DOWNLOAD_REMOTE_CONFIG_VERSION,
-            message: new RequestMessages.DownloadRemoteConfigVersionMessage({
+            message: RequestMessages.DownloadRemoteConfigVersionMessage.fromObject({
                 platform: platform,
                 device_manufacturer: deviceManufacturer,
                 device_model: deviceModel,
@@ -277,7 +286,7 @@ function Client(options) {
     this.registerBackgroundDevice = function(deviceType, deviceID) {
         return self.callOrChain({
             type: RequestType.REGISTER_BACKGROUND_DEVICE,
-            message: new RequestMessages.RegisterBackgroundDeviceMessage({
+            message: RequestMessages.RegisterBackgroundDeviceMessage.fromObject({
                 device_type: deviceType,
                 device_id: deviceID
             }),
@@ -288,7 +297,7 @@ function Client(options) {
     this.fortSearch = function(fortID, fortLatitude, fortLongitude) {
         return self.callOrChain({
             type: RequestType.FORT_SEARCH,
-            message: new RequestMessages.FortSearchMessage({
+            message: RequestMessages.FortSearchMessage.fromObject({
                 fort_id: fortID,
                 player_latitude: self.playerLatitude,
                 player_longitude: self.playerLongitude,
@@ -302,7 +311,7 @@ function Client(options) {
     this.encounter = function(encounterID, spawnPointID) {
         return self.callOrChain({
             type: RequestType.ENCOUNTER,
-            message: new RequestMessages.EncounterMessage({
+            message: RequestMessages.EncounterMessage.fromObject({
                 encounter_id: encounterID,
                 spawn_point_id: spawnPointID,
                 player_latitude: self.playerLatitude,
@@ -316,7 +325,7 @@ function Client(options) {
         spinModifier, normalizedHitPosition) {
         return self.callOrChain({
             type: RequestType.CATCH_POKEMON,
-            message: new RequestMessages.CatchPokemonMessage({
+            message: RequestMessages.CatchPokemonMessage.fromObject({
                 encounter_id: encounterID,
                 pokeball: pokeballItemID,
                 normalized_reticle_size: normalizedReticleSize,
@@ -332,7 +341,7 @@ function Client(options) {
     this.fortDetails = function(fortID, fortLatitude, fortLongitude) {
         return self.callOrChain({
             type: RequestType.FORT_DETAILS,
-            message: new RequestMessages.FortDetailsMessage({
+            message: RequestMessages.FortDetailsMessage.fromObject({
                 fort_id: fortID,
                 latitude: fortLatitude,
                 longitude: fortLongitude
@@ -344,7 +353,7 @@ function Client(options) {
     this.getMapObjects = function(cellIDs, sinceTimestamps) {
         return self.callOrChain({
             type: RequestType.GET_MAP_OBJECTS,
-            message: new RequestMessages.GetMapObjectsMessage({
+            message: RequestMessages.GetMapObjectsMessage.fromObject({
                 cell_id: cellIDs,
                 since_timestamp_ms: sinceTimestamps,
                 latitude: self.playerLatitude,
@@ -357,7 +366,7 @@ function Client(options) {
     this.fortDeployPokemon = function(fortID, pokemonID) {
         return self.callOrChain({
             type: RequestType.FORT_DEPLOY_POKEMON,
-            message: new RequestMessages.FortDeployPokemonMessage({
+            message: RequestMessages.FortDeployPokemonMessage.fromObject({
                 fort_id: fortID,
                 pokemon_id: pokemonID,
                 player_latitude: self.playerLatitude,
@@ -370,7 +379,7 @@ function Client(options) {
     this.fortRecallPokemon = function(fortID, pokemonID) {
         return self.callOrChain({
             type: RequestType.FORT_RECALL_POKEMON,
-            message: new RequestMessages.FortRecallPokemonMessage({
+            message: RequestMessages.FortRecallPokemonMessage.fromObject({
                 fort_id: fortID,
                 pokemon_id: pokemonID,
                 player_latitude: self.playerLatitude,
@@ -385,7 +394,7 @@ function Client(options) {
 
         return self.callOrChain({
             type: RequestType.RELEASE_POKEMON,
-            message: new RequestMessages.ReleasePokemonMessage({
+            message: RequestMessages.ReleasePokemonMessage.fromObject({
                 pokemon_id: pokemonIDs.length === 1 ? pokemonIDs[0] : undefined,
                 pokemon_ids: pokemonIDs.length > 1 ? pokemonIDs : undefined
             }),
@@ -396,7 +405,7 @@ function Client(options) {
     this.useItemPotion = function(itemID, pokemonID) {
         return self.callOrChain({
             type: RequestType.USE_ITEM_POTION,
-            message: new RequestMessages.UseItemPotionMessage({
+            message: RequestMessages.UseItemPotionMessage.fromObject({
                 item_id: itemID,
                 pokemon_id: pokemonID
             }),
@@ -407,7 +416,7 @@ function Client(options) {
     this.useItemCapture = function(itemID, encounterID, spawnPointID) {
         return self.callOrChain({
             type: RequestType.USE_ITEM_CAPTURE,
-            message: new RequestMessages.UseItemCaptureMessage({
+            message: RequestMessages.UseItemCaptureMessage.fromObject({
                 item_id: itemID,
                 encounter_id: encounterID,
                 spawn_point_id: spawnPointID
@@ -419,7 +428,7 @@ function Client(options) {
     this.useItemRevive = function(itemID, pokemonID) {
         return self.callOrChain({
             type: RequestType.USE_ITEM_REVIVE,
-            message: new RequestMessages.UseItemReviveMessage({
+            message: RequestMessages.UseItemReviveMessage.fromObject({
                 item_id: itemID,
                 pokemon_id: pokemonID
             }),
@@ -430,7 +439,7 @@ function Client(options) {
     this.getPlayerProfile = function(playerName) {
         return self.callOrChain({
             type: RequestType.GET_PLAYER_PROFILE,
-            message: new RequestMessages.GetPlayerProfileMessage({
+            message: RequestMessages.GetPlayerProfileMessage.fromObject({
                 player_name: playerName
             }),
             responseType: Responses.GetPlayerProfileResponse
@@ -440,7 +449,7 @@ function Client(options) {
     this.evolvePokemon = function(pokemonID, evolutionRequirementItemID) {
         return self.callOrChain({
             type: RequestType.EVOLVE_POKEMON,
-            message: new RequestMessages.EvolvePokemonMessage({
+            message: RequestMessages.EvolvePokemonMessage.fromObject({
                 pokemon_id: pokemonID,
                 evolution_item_requirement: evolutionRequirementItemID
             }),
@@ -458,7 +467,7 @@ function Client(options) {
     this.encounterTutorialComplete = function(pokemonID) {
         return self.callOrChain({
             type: RequestType.ENCOUNTER_TUTORIAL_COMPLETE,
-            message: new RequestMessages.EncounterTutorialCompleteMessage({
+            message: RequestMessages.EncounterTutorialCompleteMessage.fromObject({
                 pokemon_id: pokemonID
             }),
             responseType: Responses.EncounterTutorialCompleteResponse
@@ -468,7 +477,7 @@ function Client(options) {
     this.levelUpRewards = function(level) {
         return self.callOrChain({
             type: RequestType.LEVEL_UP_REWARDS,
-            message: new RequestMessages.LevelUpRewardsMessage({
+            message: RequestMessages.LevelUpRewardsMessage.fromObject({
                 level: level
             }),
             responseType: Responses.LevelUpRewardsResponse
@@ -485,7 +494,7 @@ function Client(options) {
     this.useItemGym = function(itemID, gymID) {
         return self.callOrChain({
             type: RequestType.USE_ITEM_GYM,
-            message: new RequestMessages.UseItemGymMessage({
+            message: RequestMessages.UseItemGymMessage.fromObject({
                 item_id: itemID,
                 gym_id: gymID,
                 player_latitude: self.playerLatitude,
@@ -498,7 +507,7 @@ function Client(options) {
     this.getGymDetails = function(gymID, gymLatitude, gymLongitude, clientVersion) {
         return self.callOrChain({
             type: RequestType.GET_GYM_DETAILS,
-            message: new RequestMessages.GetGymDetailsMessage({
+            message: RequestMessages.GetGymDetailsMessage.fromObject({
                 gym_id: gymID,
                 player_latitude: self.playerLatitude,
                 player_longitude: self.playerLongitude,
@@ -513,7 +522,7 @@ function Client(options) {
     this.startGymBattle = function(gymID, attackingPokemonIDs, defendingPokemonID) {
         return self.callOrChain({
             type: RequestType.START_GYM_BATTLE,
-            message: new RequestMessages.StartGymBattleMessage({
+            message: RequestMessages.StartGymBattleMessage.fromObject({
                 gym_id: gymID,
                 attacking_pokemon_ids: attackingPokemonIDs,
                 defending_pokemon_id: defendingPokemonID,
@@ -527,7 +536,7 @@ function Client(options) {
     this.attackGym = function(gymID, battleID, attackActions, lastRetrievedAction) {
         return self.callOrChain({
             type: RequestType.ATTACK_GYM,
-            message: new RequestMessages.AttackGymMessage({
+            message: RequestMessages.AttackGymMessage.fromObject({
                 gym_id: gymID,
                 battle_id: battleID,
                 attack_actions: attackActions,
@@ -542,7 +551,7 @@ function Client(options) {
     this.recycleInventoryItem = function(itemID, count) {
         return self.callOrChain({
             type: RequestType.RECYCLE_INVENTORY_ITEM,
-            message: new RequestMessages.RecycleInventoryItemMessage({
+            message: RequestMessages.RecycleInventoryItemMessage.fromObject({
                 item_id: itemID,
                 count: count
             }),
@@ -560,7 +569,7 @@ function Client(options) {
     this.useItemXPBoost = function(itemID) {
         return self.callOrChain({
             type: RequestType.USE_ITEM_XP_BOOST,
-            message: new RequestMessages.UseItemXpBoostMessage({
+            message: RequestMessages.UseItemXpBoostMessage.fromObject({
                 item_id: itemID
             }),
             responseType: Responses.UseItemXpBoostResponse
@@ -570,7 +579,7 @@ function Client(options) {
     this.useItemEggIncubator = function(itemID, pokemonID) {
         return self.callOrChain({
             type: RequestType.USE_ITEM_EGG_INCUBATOR,
-            message: new RequestMessages.UseItemEggIncubatorMessage({
+            message: RequestMessages.UseItemEggIncubatorMessage.fromObject({
                 item_id: itemID,
                 pokemon_id: pokemonID
             }),
@@ -581,7 +590,7 @@ function Client(options) {
     this.useIncense = function(itemID) {
         return self.callOrChain({
             type: RequestType.USE_INCENSE,
-            message: new RequestMessages.UseIncenseMessage({
+            message: RequestMessages.UseIncenseMessage.fromObject({
                 incense_type: itemID
             }),
             responseType: Responses.UseIncenseResponse
@@ -591,7 +600,7 @@ function Client(options) {
     this.getIncensePokemon = function() {
         return self.callOrChain({
             type: RequestType.GET_INCENSE_POKEMON,
-            message: new RequestMessages.GetIncensePokemonMessage({
+            message: RequestMessages.GetIncensePokemonMessage.fromObject({
                 player_latitude: self.playerLatitude,
                 player_longitude: self.playerLongitude
             }),
@@ -602,7 +611,7 @@ function Client(options) {
     this.incenseEncounter = function(encounterID, encounterLocation) {
         return self.callOrChain({
             type: RequestType.INCENSE_ENCOUNTER,
-            message: new RequestMessages.IncenseEncounterMessage({
+            message: RequestMessages.IncenseEncounterMessage.fromObject({
                 encounter_id: encounterID,
                 encounter_location: encounterLocation
             }),
@@ -613,7 +622,7 @@ function Client(options) {
     this.addFortModifier = function(modifierItemID, fortID) {
         return self.callOrChain({
             type: RequestType.ADD_FORT_MODIFIER,
-            message: new RequestMessages.AddFortModifierMessage({
+            message: RequestMessages.AddFortModifierMessage.fromObject({
                 modifier_type: modifierItemID,
                 fort_id: fortID,
                 player_latitude: self.playerLatitude,
@@ -625,7 +634,7 @@ function Client(options) {
     this.diskEncounter = function(encounterID, fortID) {
         return self.callOrChain({
             type: RequestType.DISK_ENCOUNTER,
-            message: new RequestMessages.DiskEncounterMessage({
+            message: RequestMessages.DiskEncounterMessage.fromObject({
                 encounter_id: encounterID,
                 fort_id: fortID,
                 player_latitude: self.playerLatitude,
@@ -645,7 +654,7 @@ function Client(options) {
     this.upgradePokemon = function(pokemonID) {
         return self.callOrChain({
             type: RequestType.UPGRADE_POKEMON,
-            message: new RequestMessages.UpgradePokemonMessage({
+            message: RequestMessages.UpgradePokemonMessage.fromObject({
                 pokemon_id: pokemonID
             }),
             responseType: Responses.UpgradePokemonResponse
@@ -655,7 +664,7 @@ function Client(options) {
     this.setFavoritePokemon = function(pokemonID, isFavorite) {
         return self.callOrChain({
             type: RequestType.SET_FAVORITE_POKEMON,
-            message: new RequestMessages.SetFavoritePokemonMessage({
+            message: RequestMessages.SetFavoritePokemonMessage.fromObject({
                 pokemon_id: pokemonID,
                 is_favorite: isFavorite
             }),
@@ -666,7 +675,7 @@ function Client(options) {
     this.nicknamePokemon = function(pokemonID, nickname) {
         return self.callOrChain({
             type: RequestType.NICKNAME_POKEMON,
-            message: new RequestMessages.NicknamePokemonMessage({
+            message: RequestMessages.NicknamePokemonMessage.fromObject({
                 pokemon_id: pokemonID,
                 nickname: nickname
             }),
@@ -677,7 +686,7 @@ function Client(options) {
     this.equipBadge = function(badgeType) {
         return self.callOrChain({
             type: RequestType.EQUIP_BADGE,
-            message: new RequestMessages.EquipBadgeMessage({
+            message: RequestMessages.EquipBadgeMessage.fromObject({
                 badge_type: badgeType
             }),
             responseType: Responses.EquipBadgeResponse
@@ -687,7 +696,7 @@ function Client(options) {
     this.setContactSettings = function(sendMarketingEmails, sendPushNotifications) {
         return self.callOrChain({
             type: RequestType.SET_CONTACT_SETTINGS,
-            message: new RequestMessages.SetContactSettingsMessage({
+            message: RequestMessages.SetContactSettingsMessage.fromObject({
                 contact_settings: {
                     send_marketing_emails: sendMarketingEmails,
                     send_push_notifications: sendPushNotifications
@@ -700,7 +709,7 @@ function Client(options) {
     this.setBuddyPokemon = function(pokemonID) {
         return self.callOrChain({
             type: RequestType.SET_BUDDY_POKEMON,
-            message: new RequestMessages.SetBuddyPokemonMessage({
+            message: RequestMessages.SetBuddyPokemonMessage.fromObject({
                 pokemon_id: pokemonID
             }),
             responseType: Responses.SetBuddyPokemonResponse
@@ -717,7 +726,7 @@ function Client(options) {
     this.useItemEncounter = function(itemID, encounterID, spawnPointGUID) {
         return self.callOrChain({
             type: RequestType.USE_ITEM_ENCOUNTER,
-            message: new RequestMessages.UseItemEncounterMessage({
+            message: RequestMessages.UseItemEncounterMessage.fromObject({
                 item: itemID,
                 encounter_id: encounterID,
                 spawn_point_guid: spawnPointGUID
@@ -730,7 +739,7 @@ function Client(options) {
                                     paginate, pageOffset, pageTimestamp) {
         return self.callOrChain({
             type: RequestType.GET_ASSET_DIGEST,
-            message: new RequestMessages.GetAssetDigestMessage({
+            message: RequestMessages.GetAssetDigestMessage.fromObject({
                 platform: platform,
                 device_manufacturer: deviceManufacturer,
                 device_model: deviceModel,
@@ -747,7 +756,7 @@ function Client(options) {
     this.getDownloadURLs = function(assetIDs) {
         return self.callOrChain({
             type: RequestType.GET_DOWNLOAD_URLS,
-            message: new RequestMessages.GetDownloadUrlsMessage({
+            message: RequestMessages.GetDownloadUrlsMessage.fromObject({
                 asset_id: assetIDs
             }),
             responseType: Responses.GetDownloadUrlsResponse
@@ -757,7 +766,7 @@ function Client(options) {
     this.claimCodename = function(codename, force) {
         return self.callOrChain({
             type: RequestType.CLAIM_CODENAME,
-            message: new RequestMessages.ClaimCodenameMessage({
+            message: RequestMessages.ClaimCodenameMessage.fromObject({
                 codename: codename,
                 force: force,
             }),
@@ -768,7 +777,7 @@ function Client(options) {
     this.setAvatar = function(playerAvatar) {
         return self.callOrChain({
             type: RequestType.SET_AVATAR,
-            message: new RequestMessages.SetAvatarMessage({
+            message: RequestMessages.SetAvatarMessage.fromObject({
                 player_avatar: playerAvatar
             }),
             responseType: Responses.SetAvatarResponse
@@ -778,7 +787,7 @@ function Client(options) {
     this.setPlayerTeam = function(teamColor) {
         return self.callOrChain({
             type: RequestType.SET_PLAYER_TEAM,
-            message: new RequestMessages.SetPlayerTeamMessage({
+            message: RequestMessages.SetPlayerTeamMessage.fromObject({
                 team: teamColor
             }),
             responseType: Responses.SetPlayerTeamResponse
@@ -788,7 +797,7 @@ function Client(options) {
     this.markTutorialComplete = function(tutorialsCompleted, sendMarketingEmails, sendPushNotifications) {
         return self.callOrChain({
             type: RequestType.MARK_TUTORIAL_COMPLETE,
-            message: new RequestMessages.MarkTutorialCompleteMessage({
+            message: RequestMessages.MarkTutorialCompleteMessage.fromObject({
                 tutorials_completed: tutorialsCompleted,
                 send_marketing_emails: sendMarketingEmails,
                 send_push_notifications: sendPushNotifications
@@ -800,7 +809,7 @@ function Client(options) {
     this.checkChallenge = function(isDebugRequest) {
         return self.callOrChain({
             type: RequestType.CHECK_CHALLENGE,
-            message: new RequestMessages.CheckChallengeMessage({
+            message: RequestMessages.CheckChallengeMessage.fromObject({
                 debug_request: isDebugRequest
             }),
             responseType: Responses.CheckChallengeResponse
@@ -810,7 +819,7 @@ function Client(options) {
     this.verifyChallenge = function(token) {
         return self.callOrChain({
             type: RequestType.VERIFY_CHALLENGE,
-            message: new RequestMessages.VerifyChallengeMessage({
+            message: RequestMessages.VerifyChallengeMessage.fromObject({
                 token: token
             }),
             responseType: Responses.VerifyChallengeResponse
@@ -834,7 +843,7 @@ function Client(options) {
     this.listAvatarCustomizations = function(avatarType, slots, filters, start, limit) {
         return self.callOrChain({
             type: RequestType.LIST_AVATAR_CUSTOMIZATIONS,
-            message: new RequestMessages.ListAvatarCustomizationsMessage({
+            message: RequestMessages.ListAvatarCustomizationsMessage.fromObject({
                 avatar_type: avatarType,
                 slot: slots,
                 filters: filters,
@@ -848,7 +857,7 @@ function Client(options) {
     this.setAvatarItemAsViewed = function(avatarTemplateIDs) {
         return self.callOrChain({
             type: RequestType.SET_AVATAR_ITEM_AS_VIEWED,
-            message: new RequestMessages.SetAvatarItemAsViewedMessage({
+            message: RequestMessages.SetAvatarItemAsViewedMessage.fromObject({
                 avatar_template_id: avatarTemplateIDs
             }),
             responseType: Responses.SetAvatarItemAsViewdResponse
@@ -865,7 +874,7 @@ function Client(options) {
     this.updateNotificationStatus = function(notificationIds, createTimestampMs, state) {
         return self.callOrChain({
             type: RequestType.UPDATE_NOTIFICATION_STATUS,
-            message: new RequestMessages.UpdateNotificationMessage({
+            message: RequestMessages.UpdateNotificationMessage.fromObject({
                 notification_ids: notificationIds,
                 create_timestamp_ms: createTimestampMs,
                 state: state,
@@ -981,14 +990,14 @@ function Client(options) {
                 };
 
                 if (r.message) {
-                    requestData.request_message = r.message.encode();
+                    requestData.request_message = encode(r.message);
                 }
 
                 return requestData;
             });
         }
 
-        return new POGOProtos.Networking.Envelopes.RequestEnvelope(envelopeData);
+        return POGOProtos.Networking.Envelopes.RequestEnvelope.fromObject(envelopeData);
     };
 
     /**
@@ -1000,10 +1009,11 @@ function Client(options) {
      * @return {RequestEnvelope} The envelope (for convenience only)
      */
     this.addPlatformRequestToEnvelope = function(envelope, requestType, requestMessage) {
+        let encoded = encode(requestMessage);
         envelope.platform_requests.push(
-            new POGOProtos.Networking.Envelopes.RequestEnvelope.PlatformRequest({
+            POGOProtos.Networking.Envelopes.RequestEnvelope.PlatformRequest.fromObject({
                 type: requestType,
-                request_message: requestMessage.encode()
+                request_message: encoded,
             })
         );
 
@@ -1055,7 +1065,7 @@ function Client(options) {
 
         if (self.needsPtr8(requests)) {
             self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.UNKNOWN_PTR_8,
-                new PlatformRequestMessages.UnknownPtr8Request({
+                PlatformRequestMessages.UnknownPtr8Request.fromObject({
                     message: self.ptr8,
                 }));
         }
@@ -1101,7 +1111,7 @@ function Client(options) {
             })
             .then(sigEncrypted =>
                 self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
-                    new PlatformRequestMessages.SendEncryptedSignatureRequest({
+                    PlatformRequestMessages.SendEncryptedSignatureRequest.fromObject({
                         encrypted_signature: sigEncrypted
                     })
                 )
@@ -1162,7 +1172,7 @@ function Client(options) {
                 self.request.postAsync({
                     url: self.endpoint,
                     proxy: self.options.proxy,
-                    body: signedEnvelope.toBuffer()
+                    body: encode(signedEnvelope),
                 })
                 .then(response => ({ signedEnvelope: signedEnvelope, response: response }))
             )
@@ -1263,7 +1273,7 @@ function Client(options) {
                         try {
                             responseMessage = requests[i].responseType.decode(
                                 responseEnvelope.returns[i]
-                            );
+                            ).toObject({ defaults: true });
                         } catch (e) {
                             throw new retry.StopError(e);
                         }
