@@ -29,7 +29,7 @@ const defaultOptions = {
     username: null,
     password: null,
     downloadSettings: true,
-    appSimulation: true,
+    appSimulation: false,
     proxy: null,
     maxTries: 5,
     automaticLongConversion: true,
@@ -135,6 +135,7 @@ function Client(options) {
             promise = promise
                         .then(() => self.login.login(self.options.username, self.options.password)
                         .then(token => {
+                            if (!token) throw new Error('Error during login, no token returned.');
                             self.options.authToken = token;
                         }));
         }
@@ -170,6 +171,7 @@ function Client(options) {
         self.options.authToken = null;
         self.authTicket = null;
         self.batchRequests = [];
+        self.batchPftmRequests = [];
         self.signatureEncryption = null;
     };
 
@@ -181,6 +183,7 @@ function Client(options) {
     this.batchStart = function() {
         if (!self.batchRequests) {
             self.batchRequests = [];
+            self.batchPftmRequests = [];
         }
         return self;
     };
@@ -190,6 +193,7 @@ function Client(options) {
      */
     this.batchClear = function() {
         delete self.batchRequests;
+        delete self.batchPftmRequests;
     };
 
     /**
@@ -874,6 +878,19 @@ function Client(options) {
         });
     };
 
+
+    /*
+     * Advanced user only
+     */
+    this.batchAddPlatformRequest = function(type, message) {
+        if (!self.batchPftmRequests) self.batchPftmRequests = [];
+        
+        self.batchPftmRequests.push({ 
+            type: type,
+            message: message,
+        });
+    }
+
     /*
      * INTERNAL STUFF
      */
@@ -1058,6 +1075,13 @@ function Client(options) {
                 new PlatformRequestMessages.UnknownPtr8Request({
                     message: self.ptr8,
                 }));
+        }
+
+        if (self.batchPftmRequests && self.batchPftmRequests.length > 0) {
+            for (let i = 0; i < self.batchPftmRequests.length; i++) {
+                let ptfm = self.batchPftmRequests[i];
+                self.addPlatformRequestToEnvelope(envelope, ptfm.type, ptfm.message);
+            }
         }
 
         let authTicket = envelope.auth_ticket;
@@ -1251,7 +1275,7 @@ function Client(options) {
 
                 let responses = [];
 
-                if (requests) {
+                if (requests && requests.length > 0) {
                     if (requests.length !== responseEnvelope.returns.length) {
                         throw new Error('Request count does not match response count');
                     }
@@ -1274,6 +1298,15 @@ function Client(options) {
                         }
                         responses.push(responseMessage);
                     }
+                } else {
+                    responseEnvelope.platform_returns.forEach(platformReturn => {
+                        if (platformReturn.type === PlatformRequestType.GET_STORE_ITEMS) {
+                            const store = PlatformResponses.GetStoreItemsResponse.decode(platformReturn.response);
+                            store._requestType = -1,
+                            store._ptfmRequestType = PlatformRequestType.GET_STORE_ITEMS,
+                            responses.push(store);
+                        }
+                    });
                 }
 
                 if (self.options.automaticLongConversion) {

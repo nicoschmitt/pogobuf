@@ -64,6 +64,9 @@ declare namespace pogobuf {
          */
         getSignatureRateInfo(): Object;
 
+        batchAddPlatformRequest(type: POGOProtos.Networking.Platform.PlatformRequestType, 
+                                message: any): void;
+
         // Pokémon Go API methods
 
         addFortModifier(
@@ -260,7 +263,9 @@ declare namespace pogobuf {
             pokemonIDs: string | number | Long | string[] | number[] | Long[]
         ): Promise<POGOProtos.Networking.Responses.ReleasePokemonResponse>;
 
-        setAvatar(playerAvatar): Promise<POGOProtos.Networking.Responses.SetAvatarResponse>;
+        setAvatar(
+            playerAvatar: POGOProtos.Data.Player.PlayerAvatar
+        ): Promise<POGOProtos.Networking.Responses.SetAvatarResponse>;
 
         setAvatarItemAsViewed(
             avatarTemplateIDs: string[]
