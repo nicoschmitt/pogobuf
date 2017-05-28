@@ -29,7 +29,7 @@ const defaultOptions = {
     username: null,
     password: null,
     downloadSettings: true,
-    appSimulation: true,
+    appSimulation: false,
     proxy: null,
     maxTries: 5,
     automaticLongConversion: true,
