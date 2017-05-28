@@ -135,6 +135,7 @@ function Client(options) {
             promise = promise
                         .then(() => self.login.login(self.options.username, self.options.password)
                         .then(token => {
+                            if (!token) throw new Error('Error during login, no token returned.');
                             self.options.authToken = token;
                         }));
         }
