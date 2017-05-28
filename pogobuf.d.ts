@@ -64,6 +64,9 @@ declare namespace pogobuf {
          */
         getSignatureRateInfo(): Object;
 
+        batchAddPlatformRequest(type: POGOProtos.Networking.Platform.PlatformRequestType, 
+                                message: any): void;
+
         // Pokémon Go API methods
 
         addFortModifier(
