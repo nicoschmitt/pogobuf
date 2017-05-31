@@ -142,7 +142,7 @@ module.exports = {
      * @static
      */
     splitItemTemplates: function(templates) {
-        if (!templates || !templates.success || !templates.item_templates) return {};
+        if (!templates) return {};
 
         var ret = {
             pokemon_settings: [],
@@ -162,7 +162,7 @@ module.exports = {
             equipped_badge_settings: null
         };
 
-        templates.item_templates.forEach(template => {
+        templates.forEach(template => {
             if (template.pokemon_settings) {
                 ret.pokemon_settings.push(template.pokemon_settings);
             }
