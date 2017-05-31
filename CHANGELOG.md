@@ -1,4 +1,7 @@
 # Work in Progress
+*
+
+# 2.1.x
 * Allow passing a platform request to the current batch with `client.batchAddPlatformRequest()`
 * If a store plateform request is passed, it's returned as response.
 * Fix `util.splitItemTemplates()` which was broken. You should now pass the `item_templates` object directly and not the response object anymore.
