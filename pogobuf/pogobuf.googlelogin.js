@@ -106,9 +106,11 @@ function GoogleLogin() {
                     if (err) {
                         reject(Error(err.response.statusCode + ': ' + err.response.statusMessage));
                         return;
+                    } else if (data.Error) {
+                        reject(Error('Error during Google login: ' + data.Error));
+                    } else {
+                        resolve(data);
                     }
-
-                    resolve(data);
                 });
         });
     };
