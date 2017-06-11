@@ -68,6 +68,14 @@ function Client(options) {
     };
 
     /**
+     * Get the specified option
+     * @return {any} Option value
+     */
+    this.getOption = function(option) {
+        return self.options[option];
+    }
+
+    /**
      * Sets the player's latitude and longitude.
      * Note that this does not actually update the player location on the server, it only sets
      * the location to be used in following API calls. To update the location on the server you
@@ -1332,7 +1340,10 @@ function Client(options) {
             self.setOption('hashingServer', self.options.hashingServer + '/');
         }
 
-        return Signature.versions.getHashingEndpoint(self.options.hashingServer, self.options.version)
+        let version = self.options.version;
+        // hack because bossland doesn't want to update their endpoint...
+        if (+version === 6304) version = 6301;
+        return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
                 .then(version => {
                     self.hashingVersion = version;
                 });

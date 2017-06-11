@@ -1,5 +1,7 @@
 # Work in Progress
-* Improve Google login logging (2.1.1)
+* Improve Google login error handling (2.1.1)
+* Add `client.getOption()` to get an option current value (2.1.1)
+* Minor text fix
 
 # 2.1.x
 * Allow passing a platform request to the current batch with `client.batchAddPlatformRequest()`
