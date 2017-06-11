@@ -92,15 +92,15 @@ declare namespace pogobuf {
         ): Promise<POGOProtos.Networking.Responses.CatchPokemonResponse>;
 
         checkAwardedBadges(
-        ): Promise<POGOProtos.Networking.Responses.CheckAwardedBadgesResponse>;
+        ): pogobuf.Client;
 
         checkChallenge(
-            isDebugRequest: boolean
-        ): Promise<POGOProtos.Networking.Responses.CheckChallengeResponse>;
+            isDebugRequest?: boolean
+        ): pogobuf.Client;
 
         claimCodename(
             codename: string
-        ): Promise<POGOProtos.Networking.Responses.ClaimCodenameResponse>;
+        ): pogobuf.Client;
 
         collectDailyBonus(
         ): Promise<POGOProtos.Networking.Responses.CollectDailyBonusResponse>;
@@ -197,14 +197,14 @@ declare namespace pogobuf {
         ): Promise<POGOProtos.Networking.Responses.GetGymDetailsResponse>;
 
         getHatchedEggs(
-        ): Promise<POGOProtos.Networking.Responses.GetHatchedEggsResponse>;
+        ): pogobuf.Client;
 
         getIncensePokemon(
         ): Promise<POGOProtos.Networking.Responses.GetIncensePokemonResponse>;
 
         getInventory(
             lastTimestamp?: string | number | Long
-        ): Promise<POGOProtos.Networking.Responses.GetInventoryResponse>;
+        ): pogobuf.Client;
 
         getMapObjects(
             cellIDs: string[] | number[] | Long[],
