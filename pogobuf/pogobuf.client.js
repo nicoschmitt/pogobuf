@@ -522,35 +522,6 @@ function Client(options) {
         });
     };
 
-    this.startGymBattle = function(gymID, attackingPokemonIDs, defendingPokemonID) {
-        return self.callOrChain({
-            type: RequestType.START_GYM_BATTLE,
-            message: new RequestMessages.StartGymBattleMessage({
-                gym_id: gymID,
-                attacking_pokemon_ids: attackingPokemonIDs,
-                defending_pokemon_id: defendingPokemonID,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.StartGymBattleResponse
-        });
-    };
-
-    this.attackGym = function(gymID, battleID, attackActions, lastRetrievedAction) {
-        return self.callOrChain({
-            type: RequestType.ATTACK_GYM,
-            message: new RequestMessages.AttackGymMessage({
-                gym_id: gymID,
-                battle_id: battleID,
-                attack_actions: attackActions,
-                last_retrieved_action: lastRetrievedAction,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.AttackGymResponse
-        });
-    };
-
     this.recycleInventoryItem = function(itemID, count) {
         return self.callOrChain({
             type: RequestType.RECYCLE_INVENTORY_ITEM,

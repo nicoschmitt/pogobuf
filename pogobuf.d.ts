@@ -74,13 +74,6 @@ declare namespace pogobuf {
             fortID: string
         ): Promise<POGOProtos.Networking.Responses.AddFortModifierResponse>;
 
-        attackGym(
-            gymID: string,
-            battleID: string,
-            attackActions: POGOProtos.Data.Battle.BattleAction[],
-            lastRetrievedAction: POGOProtos.Data.Battle.BattleAction
-        ): Promise<POGOProtos.Networking.Responses.AttackGymResponse>;
-
         catchPokemon(
             encounterID: string | number | Long,
             pokeballItemID: POGOProtos.Inventory.Item.ItemId,
@@ -291,12 +284,6 @@ declare namespace pogobuf {
 
         sfidaActionLog(
         ): Promise<POGOProtos.Networking.Responses.SfidaActionLogResponse>;
-
-        startGymBattle(
-            gymID: string,
-            attackingPokemonIDs: string[] | number[] | Long[],
-            defendingPokemonID: string | number | Long
-        ): Promise<POGOProtos.Networking.Responses.StartGymBattleResponse>;
 
         upgradePokemon(
             pokemonID: string | number | Long
