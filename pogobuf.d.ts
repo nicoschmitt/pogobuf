@@ -64,19 +64,15 @@ declare namespace pogobuf {
          */
         getSignatureRateInfo(): Object;
 
+        batchAddPlatformRequest(type: POGOProtos.Networking.Platform.PlatformRequestType, 
+                                message: any): void;
+
         // Pokémon Go API methods
 
         addFortModifier(
             modifierItemID: POGOProtos.Inventory.Item.ItemId,
             fortID: string
         ): Promise<POGOProtos.Networking.Responses.AddFortModifierResponse>;
-
-        attackGym(
-            gymID: string,
-            battleID: string,
-            attackActions: POGOProtos.Data.Battle.BattleAction[],
-            lastRetrievedAction: POGOProtos.Data.Battle.BattleAction
-        ): Promise<POGOProtos.Networking.Responses.AttackGymResponse>;
 
         catchPokemon(
             encounterID: string | number | Long,
@@ -89,15 +85,15 @@ declare namespace pogobuf {
         ): Promise<POGOProtos.Networking.Responses.CatchPokemonResponse>;
 
         checkAwardedBadges(
-        ): Promise<POGOProtos.Networking.Responses.CheckAwardedBadgesResponse>;
+        ): pogobuf.Client;
 
         checkChallenge(
-            isDebugRequest: boolean
-        ): Promise<POGOProtos.Networking.Responses.CheckChallengeResponse>;
+            isDebugRequest?: boolean
+        ): pogobuf.Client;
 
         claimCodename(
             codename: string
-        ): Promise<POGOProtos.Networking.Responses.ClaimCodenameResponse>;
+        ): pogobuf.Client;
 
         collectDailyBonus(
         ): Promise<POGOProtos.Networking.Responses.CollectDailyBonusResponse>;
@@ -194,14 +190,14 @@ declare namespace pogobuf {
         ): Promise<POGOProtos.Networking.Responses.GetGymDetailsResponse>;
 
         getHatchedEggs(
-        ): Promise<POGOProtos.Networking.Responses.GetHatchedEggsResponse>;
+        ): pogobuf.Client;
 
         getIncensePokemon(
         ): Promise<POGOProtos.Networking.Responses.GetIncensePokemonResponse>;
 
         getInventory(
             lastTimestamp?: string | number | Long
-        ): Promise<POGOProtos.Networking.Responses.GetInventoryResponse>;
+        ): pogobuf.Client;
 
         getMapObjects(
             cellIDs: string[] | number[] | Long[],
@@ -288,12 +284,6 @@ declare namespace pogobuf {
 
         sfidaActionLog(
         ): Promise<POGOProtos.Networking.Responses.SfidaActionLogResponse>;
-
-        startGymBattle(
-            gymID: string,
-            attackingPokemonIDs: string[] | number[] | Long[],
-            defendingPokemonID: string | number | Long
-        ): Promise<POGOProtos.Networking.Responses.StartGymBattleResponse>;
 
         upgradePokemon(
             pokemonID: string | number | Long

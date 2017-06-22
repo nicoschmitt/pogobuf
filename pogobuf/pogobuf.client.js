@@ -29,7 +29,7 @@ const defaultOptions = {
     username: null,
     password: null,
     downloadSettings: true,
-    appSimulation: true,
+    appSimulation: false,
     proxy: null,
     maxTries: 5,
     automaticLongConversion: true,
@@ -75,6 +75,14 @@ function Client(options) {
     this.setOption = function(option, value) {
         self.options[option] = value;
     };
+
+    /**
+     * Get the specified option
+     * @return {any} Option value
+     */
+    this.getOption = function(option) {
+        return self.options[option];
+    }
 
     /**
      * Sets the player's latitude and longitude.
@@ -144,6 +152,7 @@ function Client(options) {
             promise = promise
                         .then(() => self.login.login(self.options.username, self.options.password)
                         .then(token => {
+                            if (!token) throw new Error('Error during login, no token returned.');
                             self.options.authToken = token;
                         }));
         }
@@ -179,6 +188,7 @@ function Client(options) {
         self.options.authToken = null;
         self.authTicket = null;
         self.batchRequests = [];
+        self.batchPftmRequests = [];
         self.signatureEncryption = null;
     };
 
@@ -190,6 +200,7 @@ function Client(options) {
     this.batchStart = function() {
         if (!self.batchRequests) {
             self.batchRequests = [];
+            self.batchPftmRequests = [];
         }
         return self;
     };
@@ -199,6 +210,7 @@ function Client(options) {
      */
     this.batchClear = function() {
         delete self.batchRequests;
+        delete self.batchPftmRequests;
     };
 
     /**
@@ -516,35 +528,6 @@ function Client(options) {
                 client_version: clientVersion
             }),
             responseType: Responses.GetGymDetailsResponse
-        });
-    };
-
-    this.startGymBattle = function(gymID, attackingPokemonIDs, defendingPokemonID) {
-        return self.callOrChain({
-            type: RequestType.START_GYM_BATTLE,
-            message: RequestMessages.StartGymBattleMessage.fromObject({
-                gym_id: gymID,
-                attacking_pokemon_ids: attackingPokemonIDs,
-                defending_pokemon_id: defendingPokemonID,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.StartGymBattleResponse
-        });
-    };
-
-    this.attackGym = function(gymID, battleID, attackActions, lastRetrievedAction) {
-        return self.callOrChain({
-            type: RequestType.ATTACK_GYM,
-            message: RequestMessages.AttackGymMessage.fromObject({
-                gym_id: gymID,
-                battle_id: battleID,
-                attack_actions: attackActions,
-                last_retrieved_action: lastRetrievedAction,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.AttackGymResponse
         });
     };
 
@@ -883,6 +866,19 @@ function Client(options) {
         });
     };
 
+
+    /*
+     * Advanced user only
+     */
+    this.batchAddPlatformRequest = function(type, message) {
+        if (!self.batchPftmRequests) self.batchPftmRequests = [];
+        
+        self.batchPftmRequests.push({ 
+            type: type,
+            message: message,
+        });
+    }
+
     /*
      * INTERNAL STUFF
      */
@@ -1068,6 +1064,13 @@ function Client(options) {
                 PlatformRequestMessages.UnknownPtr8Request.fromObject({
                     message: self.ptr8,
                 }));
+        }
+
+        if (self.batchPftmRequests && self.batchPftmRequests.length > 0) {
+            for (let i = 0; i < self.batchPftmRequests.length; i++) {
+                let ptfm = self.batchPftmRequests[i];
+                self.addPlatformRequestToEnvelope(envelope, ptfm.type, ptfm.message);
+            }
         }
 
         let authTicket = envelope.auth_ticket;
@@ -1261,7 +1264,7 @@ function Client(options) {
 
                 let responses = [];
 
-                if (requests) {
+                if (requests && requests.length > 0) {
                     if (requests.length !== responseEnvelope.returns.length) {
                         throw new Error('Request count does not match response count');
                     }
@@ -1284,6 +1287,15 @@ function Client(options) {
                         }
                         responses.push(responseMessage);
                     }
+                } else {
+                    responseEnvelope.platform_returns.forEach(platformReturn => {
+                        if (platformReturn.type === PlatformRequestType.GET_STORE_ITEMS) {
+                            const store = PlatformResponses.GetStoreItemsResponse.decode(platformReturn.response);
+                            store._requestType = -1,
+                            store._ptfmRequestType = PlatformRequestType.GET_STORE_ITEMS,
+                            responses.push(store);
+                        }
+                    });
                 }
 
                 if (self.options.automaticLongConversion) {
@@ -1309,7 +1321,10 @@ function Client(options) {
             self.setOption('hashingServer', self.options.hashingServer + '/');
         }
 
-        return Signature.versions.getHashingEndpoint(self.options.hashingServer, self.options.version)
+        let version = self.options.version;
+        // hack because bossland doesn't want to update their endpoint...
+        if (+version === 6304) version = 6301;
+        return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
                 .then(version => {
                     self.hashingVersion = version;
                 });

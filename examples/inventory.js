@@ -3,50 +3,51 @@
 /*
     This example script shows how to work with the getInventory() API call and the
     splitInventory() function.
+    This one suppose node > 7.6.0 to use await/async
 */
-const pogobuf = require('pogobuf'),
-    POGOProtos = require('node-pogo-protos');
+const pogobuf = require('pogobuf');
+const POGOProtos = require('node-pogo-protos');
 
 // Note: To avoid getting softbanned, change these coordinates to something close to where you
 // last used your account
-const lat = 37.7876146,
-    lng = -122.3884353;
+const pos = {
+    lat: 37.7876146,
+    lng: -122.3884353,
+};
 
-let client;
+async function Main() {
+    let client = new pogobuf.Client({
+        authType: 'google',
+        username: 'your-username@gmail.com', 
+        password: 'your-google-password',
+        hashingKey: 'hash key',
+        useHashingServer: true,
+    });
 
-// Login to Google and get a login token
-new pogobuf.GoogleLogin().login('your-username@gmail.com', 'your-google-password')
-    .then(token => {
-        // Initialize the client
-        client = new pogobuf.Client({
-            authType: 'google',
-            authToken: token
-        });
-        client.setPosition(lat, lng);
+    client.setPosition(pos.lat, pos.lng);
 
-        // Uncomment the following if you want to see request/response information on the console
-        // client.on('request', console.dir);
-        // client.on('response', console.dir);
+    await client.init();
+    await client.batchStart().batchCall();
+    await client.getPlayer('US', 'en', 'Europe/Paris');
+    let response = await client.batchStart()
+                               .downloadRemoteConfigVersion(POGOProtos.Enums.Platform.IOS, '', '', '', 6301)
+                               .checkChallenge()
+                               .getHatchedEggs()
+                               .getInventory()
+                               .checkAwardedBadges()
+                               .downloadSettings()
+                               .batchCall();
 
-        // Perform the initial request
-        return client.init();
-    })
-    .then(() => {
-        // Get full inventory
-        return client.getInventory(0);
-    })
-    .then(inventory => {
-        if (!inventory.success) throw Error('success=false in inventory response');
+    let inventory = pogobuf.Utils.splitInventory(response[3]);
+    console.log('Items:');
+    inventory.items.forEach(item => {
+        const name = pogobuf.Utils.getEnumKeyByValue(POGOProtos.Inventory.Item.ItemId, item.item_id);
+        console.log(item.count + 'x ' + name);
+    });
 
-        // Split inventory into individual arrays and log them on the console
-        inventory = pogobuf.Utils.splitInventory(inventory);
-        console.log('Full inventory:', inventory);
+    client.cleanUp();
+}
 
-        console.log('Items:');
-        inventory.items.forEach(item => {
-            console.log(item.count + 'x ' +
-                pogobuf.Utils.getEnumKeyByValue(POGOProtos.Inventory.Item.ItemId, item.item_id));
-        });
-    })
-    .then(() => client.cleanUp())
-    .catch(console.error);
+Main()
+.then(() => console.log('Done.'))
+.catch(e => console.error(e));
