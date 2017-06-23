@@ -718,6 +718,20 @@ function Client(options) {
         });
     };
 
+    this.gymGetInfo = function(gymId, gymLat, gymLng) {
+        return self.callOrChain({
+            type: RequestType.GYM_GET_INFO,
+            message: RequestMessages.GymGetInfoMessage.fromObject({
+	            gym_id: gymId,
+	            player_lat_degrees: self.playerLatitude,
+	            player_lng_degrees: self.playerLatitude,
+	            gym_lat_degrees: gymLat,
+	            gym_lng_degrees: gymLng,
+            }),
+            responseType: Responses.GymGetInfoResponse
+        });
+    };
+
     this.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion,
                                     paginate, pageOffset, pageTimestamp) {
         return self.callOrChain({
@@ -866,6 +880,24 @@ function Client(options) {
         });
     };
 
+    this.listGymBadges = function() {
+        return self.callOrChain({
+            type: RequestType.LIST_GYM_BADGES,
+            responseType: Responses.ListGymBadgesResponse
+        });
+    };
+    
+    this.getGymBadgeDetails = function(fortId, latitude, longitude) {
+        return self.callOrChain({
+            type: RequestType.GET_GYM_BADGE_DETAILS,
+            message: RequestMessages.GetGymBadgeDetailsMessage.fromObject({
+                fort_id: fortId,
+                latitude: latitude,
+                longitude: longitude,
+            }),
+            responseType: Responses.GetGymBadgeDetailsResponse
+        });
+    };
 
     /*
      * Advanced user only
