@@ -861,9 +861,14 @@ function Client(options) {
         });
     };
 
-    this.getInbox = function() {
+    this.getInbox = function(isHistory, isReverse, notBefore) {
         return self.callOrChain({
             type: RequestType.GET_INBOX,
+            message: RequestMessages.GetInboxMessage.fromObject({
+                is_history: isHistory,
+                is_reverse: isReverse,
+                not_before_ms: notBefore,
+            }),
             responseType: Responses.GetInboxResponse
         });
     };

@@ -182,6 +182,12 @@ declare namespace pogobuf {
             assetIDs: string[]
         ): Promise<POGOProtos.Networking.Responses.GetDownloadUrlsResponse>;
 
+        getGymBadgeDetails(
+            fortId: string | Long,
+            latitude: number,
+            longitude: number,
+        ): pogobuf.Client;
+
         getGymDetails(
             gymID: string,
             gymLatitude: number,
@@ -190,6 +196,12 @@ declare namespace pogobuf {
         ): Promise<POGOProtos.Networking.Responses.GetGymDetailsResponse>;
 
         getHatchedEggs(
+        ): pogobuf.Client;
+
+        getInbox(
+            isHistory?: boolean,
+            isReverse?: boolean,
+            notBefore?: string | number | Long,
         ): pogobuf.Client;
 
         getIncensePokemon(
@@ -230,6 +242,9 @@ declare namespace pogobuf {
             start: number,
             limit: number
         ): Promise<POGOProtos.Networking.Responses.ListAvatarCustomizationsResponse>;
+
+        listGymBadges(
+        ): pogobuf.Client;
 
         markTutorialComplete(
             tutorialsCompleted: POGOProtos.Enums.TutorialState[],
