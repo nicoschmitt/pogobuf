@@ -1,4 +1,4 @@
-import * as POGOProtos from 'node-pogo-protos';
+import * as POGOProtos from 'node-pogo-protos-vnext';
 
 /**
  * Pogobuf typings created with <3 by hands.

@@ -1,7 +1,7 @@
 'use strict';
 
 const Long = require('long'),
-    POGOProtos = require('node-pogo-protos'),
+    POGOProtos = require('node-pogo-protos-vnext'),
     Signature = require('pogobuf-signature'),
     Promise = require('bluebird'),
     request = require('request'),
