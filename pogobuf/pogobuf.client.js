@@ -905,6 +905,31 @@ function Client(options) {
     };
 
     /*
+     * Platform Client Actions
+     */
+    this.registerPushNotification = function(apnToken, gcmToken) {
+        return self.callOrChain({
+            type: RequestType.REGISTER_PUSH_NOTIFICATION,
+            message: RequestMessages.RegisterPushNotificationMessage.fromObject({
+                apn_token: apnToken,
+                gcm_token: gcmToken,
+            }),
+            responseType: Responses.RegisterPushNotificationResponse
+        });
+    };
+
+    this.optOutPushNotificationCategory = function(categories) {
+        if (!Array.isArray(categories)) categories = [categories];
+        return self.callOrChain({
+            type: RequestType.OPT_OUT_PUSH_NOTIFICATION_CATEGORY,
+            message: RequestMessages.OptOutPushNotificationCategoryMessage.fromObject({
+                categories: categories,
+            }),
+            responseType: Responses.OptOutPushNotificationCategoryResponse
+        });
+    };
+
+    /*
      * Advanced user only
      */
     this.batchAddPlatformRequest = function(type, message) {
