@@ -1313,7 +1313,10 @@ function Client(options) {
                         try {
                             responseMessage = requests[i].responseType.decode(
                                 responseEnvelope.returns[i]
-                            ).toObject({ defaults: true });
+                            );
+                            responseMessage = requests[i].responseType.toObject(
+                                responseMessage, { defaults: true }
+                            );
                         } catch (e) {
                             throw new retry.StopError(e);
                         }
