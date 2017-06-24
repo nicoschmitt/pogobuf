@@ -1,7 +1,5 @@
-/*eslint no-underscore-dangle: ["error", { "allow": ["_eventId"] }]*/
-'use strict';
-
 /* eslint no-underscore-dangle: ["error", { "allow": ["_eventId"] }] */
+'use strict';
 
 const request = require('request'),
     Promise = require('bluebird');
@@ -27,7 +25,7 @@ function PTCLogin() {
         self.cookies = request.jar();
         self.request = request.defaults({
             headers: {
-                'User-Agent': 'niantic'
+                'User-Agent': 'pokemongo/1 CFNetwork/811.4.18 Darwin/16.5.0'
             },
             jar: self.cookies,
         });

@@ -1,4 +1,5 @@
 # Work in Progress
+* Switch to protobufjs v6 (2.2.0)
 * Improve Google login error handling (2.1.1)
 * Add `client.getOption()` to get an option current value (2.1.1)
 * Minor text fix
