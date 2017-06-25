@@ -34,7 +34,7 @@ const defaultOptions = {
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 6100,
+    version: 6703,
     useHashingServer: false,
     hashingServer: 'http://hashing.pogodev.io/',
     hashingKey: null,
