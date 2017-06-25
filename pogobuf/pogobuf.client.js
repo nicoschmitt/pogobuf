@@ -35,7 +35,7 @@ const defaultOptions = {
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
     version: 6703,
-    useHashingServer: false,
+    useHashingServer: true,
     hashingServer: 'http://hashing.pogodev.io/',
     hashingKey: null,
     deviceId: null,
@@ -183,7 +183,7 @@ function Client(options) {
      * Clean up ressources, like timer and token
      */
     this.cleanUp = function() {
-        self.signatureGenerator.clean();
+        if (self.signatureGenerator) self.signatureGenerator.clean();
         self.signatureGenerator = null;
         self.options.authToken = null;
         self.authTicket = null;

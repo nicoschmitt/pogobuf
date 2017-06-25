@@ -9,92 +9,117 @@
     4. Retrieve detailed data for all gyms in the area
     5. Display information about each gym
 
-    It shows how to use the pogobuf library to perform requests and work with the returend data.
+    It shows how to use the pogobuf library to perform requests and work with the returned data.
+    This is not using a proper flow that mimic the app but it show how to use the lib
 
-    In addition to pogobuf, this example requires the npm package node-geocoder.
+    In addition to pogobuf, this example requires the npm package node-geocoder and lodash.
+    async/await requires node > 7.6
 */
 
-const pogobuf = require('pogobuf'),
-    POGOProtos = require('node-pogo-protos'),
-    nodeGeocoder = require('node-geocoder');
+const pogobuf = require('pogobuf-vnext');
+const POGOProtos = require('node-pogo-protos-vnext');
+const nodeGeocoder = require('node-geocoder');
+const _ = require('lodash');
 
-let client,
-    lat,
-    lng;
+const RequestType = POGOProtos.Networking.Requests.RequestType;
 
-// Get latitude and longitude from geocoder
-// Note: To avoid getting softbanned, change the address to one that is close to where you
-// last used your account
-nodeGeocoder.geocode('2 Bryant St, San Francisco')
-    .then(location => {
-        if (!location.length) {
-            throw Error('No location found');
-        }
-        lat = location[0].latitude;
-        lng = location[0].longitude;
+async function Main() {
+    let location = await nodeGeocoder().geocode('Invalides, Paris');
+    if (!location.length) throw new Error('Location not found.');
 
-        // Login to PTC and get a login token
-        return new pogobuf.PTCLogin().login('your-ptc-username', 'your-ptc-password');
-    })
-    .then(token => {
-        // Initialize the client
-        client = new pogobuf.Client({
-            authType: 'ptc',
-            authToken: token
-        });
-        client.setPosition(lat, lng);
+    var coords = { 
+        latitude: location[0].latitude, 
+        longitude: location[0].longitude,
+        altitude: _.random(0, 20, true),
+    };
 
-        // Uncomment the following if you want to see request/response information on the console
-        // client.on('request', console.dir);
-        // client.on('response', console.dir);
+    let client = new pogobuf.Client({
+        authType: 'ptc',
+        username: 'ptc user name', 
+        password: 'ptc password',
+        useHashingServer: true,
+        hashingKey: 'your hashing key',
+        version: 6701,
+        includeRequestTypeInResponse: true,
+    });
 
-        // Perform the initial request
-        return client.init();
-    })
-    .then(() => {
-        // Retrieve all map objects in the surrounding area
-        const cellIDs = pogobuf.Utils.getCellIDs(lat, lng);
-        return client.getMapObjects(cellIDs, Array(cellIDs.length).fill(0));
-    })
-    .then(mapObjects => {
-        // Get all gyms from all returned map cells, then retrieve all of their details in
-        // one batch call
-        client.batchStart();
+    // set player position
+    client.setPosition(coords);
 
-        mapObjects.map_cells.map(cell => cell.forts)
-            .reduce((a, b) => a.concat(b))
-            .filter(fort => fort.type === 0)
-            .forEach(fort => client.getGymDetails(fort.id, fort.latitude, fort.longitude));
+    // init the app
+    await client.init();
 
-        return client.batchCall();
-    })
-    .then(gyms => {
-        // Display gym information
-        gyms.forEach(gym => {
-            const fortData = gym.gym_state.fort_data,
-                memberships = gym.gym_state.memberships;
+    // first empty request like the app
+    await client.batchStart().batchCall();
 
-            console.log(gym.name);
-            console.log('-'.repeat(gym.name.length));
+    // get player info
+    await client.getPlayer('US', 'en', 'Europe/Paris');
 
-            let team = 'Owned by team: ' + pogobuf.Utils.getEnumKeyByValue(POGOProtos.Enums.TeamColor,
-                fortData.owned_by_team);
-            if (fortData.is_in_battle) team += ' [IN BATTLE]';
-            console.log(team);
+    // get settings, inventory, etc...
+    let response = await client.batchStart()
+                               .downloadRemoteConfigVersion(POGOProtos.Enums.Platform.IOS, '', '', '', 6701)
+                               .checkChallenge()
+                               .getHatchedEggs()
+                               .getInventory()
+                               .checkAwardedBadges()
+                               .downloadSettings()
+                               .batchCall();
 
-            console.log('Points: ' + fortData.gym_points);
+    // get data returned by the server that it expect in following calls
+    const inventoryResponse = _.find(response, resp => resp._requestType === RequestType.GET_INVENTORY);
+    const level = pogobuf.Utils.splitInventory(inventoryResponse).player.level;
+    const settings = _.find(response, resp => resp._requestType === RequestType.DOWNLOAD_SETTINGS).hash;
+    const inventory = inventoryResponse.inventory_delta.new_timestamp_ms;
 
-            if (memberships && memberships.length) {
-                const highest = memberships[memberships.length - 1];
+    // call getPlayerProfile with data got before
+    response = await client.batchStart()
+                           .getPlayerProfile()
+                           .checkChallenge()
+                           .getHatchedEggs()
+                           .getInventory(inventory)
+                           .checkAwardedBadges()
+                           .downloadSettings(settings)
+                           .getBuddyWalked()
+                           .batchCall();
 
-                console.log('Highest Pokémon: ' + pogobuf.Utils.getEnumKeyByValue(POGOProtos.Enums.PokemonId,
-                    highest.pokemon_data.pokemon_id) + ', ' + highest.pokemon_data.cp + ' CP');
-                console.log('Trainer: ' + highest.trainer_public_profile.name + ', level ' +
-                    highest.trainer_public_profile.level);
-            }
+    // same for levelUpRewards
+    response = await client.batchStart()
+                           .levelUpRewards(level)
+                           .checkChallenge()
+                           .getHatchedEggs()
+                           .getInventory(inventory)
+                           .checkAwardedBadges()
+                           .downloadSettings(settings)
+                           .getBuddyWalked()
+                           .getInbox(true, false, 0)
+                           .batchCall();
 
-            console.log();
-        });
-    })
-    .then(() => client.cleanUp())
-    .catch(console.error);
+    // then call a getMapObjects
+    const cellIDs = pogobuf.Utils.getCellIDs(coords.latitude, coords.longitude);
+    response = await client.batchStart()
+                           .getMapObjects(cellIDs, Array(cellIDs.length).fill(0))
+                           .checkChallenge()
+                           .getHatchedEggs()
+                           .getInventory(inventory)
+                           .checkAwardedBadges()
+                           .getBuddyWalked()
+                           .getInbox(true, false, 0)
+                           .batchCall();
+
+    let forts = response[0].map_cells.reduce((all, c) => all.concat(c.forts), []);
+    let pokestops = forts.filter(f => f.type === 1);
+    let gyms = forts.filter(f => f.type === 0);
+
+    console.log(`Found ${pokestops.length} pokestops.`);
+    console.log(`Found ${gyms.length} gyms`);
+    if (gyms.length > 0) {
+        gyms = gyms.filter(g => g.raid_info != null);
+        console.log(`  with ${gyms.length} raids.`);
+    }
+
+    client.cleanUp();
+}
+
+Main()
+    .then(() => console.log('Done.'))
+    .catch(e => console.error(e));
