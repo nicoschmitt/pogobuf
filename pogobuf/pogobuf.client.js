@@ -34,7 +34,7 @@ const defaultOptions = {
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 6703,
+    version: 6701,
     useHashingServer: true,
     hashingServer: 'http://hashing.pogodev.io/',
     hashingKey: null,
@@ -792,6 +792,7 @@ function Client(options) {
     };
 
     this.markTutorialComplete = function(tutorialsCompleted, sendMarketingEmails, sendPushNotifications) {
+        if (!Array.isArray(tutorialsCompleted)) tutorialsCompleted = [tutorialsCompleted];
         return self.callOrChain({
             type: RequestType.MARK_TUTORIAL_COMPLETE,
             message: RequestMessages.MarkTutorialCompleteMessage.fromObject({
