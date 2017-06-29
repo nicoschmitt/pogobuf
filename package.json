@@ -1,6 +1,6 @@
 {
   "name": "pogobuf-vnext",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Pokémon Go Client Library (vnext)",
   "main": "pogobuf/pogobuf.js",
   "typings": "./pogobuf.d.ts",
@@ -38,7 +38,7 @@
     "s2-geometry": "^1.2.9"
   },
   "devDependencies": {
-    "eslint": "^4.1.0",
+    "eslint": "^4.1.1",
     "eslint-config-airbnb-base": "^11.2.0",
     "eslint-plugin-import": "^2.6.0"
   }
