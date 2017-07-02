@@ -36,7 +36,7 @@ const defaultOptions = {
     includeRequestTypeInResponse: false,
     version: 6701,
     useHashingServer: true,
-    hashingServer: 'http://hashing.pogodev.io/',
+    hashingServer: 'http://pokehash.buddyauth.com/',
     hashingKey: null,
     deviceId: null,
 };
@@ -1389,7 +1389,7 @@ function Client(options) {
 
         let version = self.options.version;
         // hack because bossland doesn't want to update their endpoint...
-        if (+version === 6304) version = 6301;
+        if (+version === 6702) version = 6701;
         return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
                 .then(version => {
                     self.hashingVersion = version;
