@@ -34,9 +34,9 @@ const defaultOptions = {
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 6100,
-    useHashingServer: false,
-    hashingServer: 'http://hashing.pogodev.io/',
+    version: 6701,
+    useHashingServer: true,
+    hashingServer: 'http://pokehash.buddyauth.com/',
     hashingKey: null,
     deviceId: null,
 };
@@ -183,7 +183,7 @@ function Client(options) {
      * Clean up ressources, like timer and token
      */
     this.cleanUp = function() {
-        self.signatureGenerator.clean();
+        if (self.signatureGenerator) self.signatureGenerator.clean();
         self.signatureGenerator = null;
         self.options.authToken = null;
         self.authTicket = null;
@@ -792,6 +792,7 @@ function Client(options) {
     };
 
     this.markTutorialComplete = function(tutorialsCompleted, sendMarketingEmails, sendPushNotifications) {
+        if (!Array.isArray(tutorialsCompleted)) tutorialsCompleted = [tutorialsCompleted];
         return self.callOrChain({
             type: RequestType.MARK_TUTORIAL_COMPLETE,
             message: RequestMessages.MarkTutorialCompleteMessage.fromObject({
@@ -1388,7 +1389,7 @@ function Client(options) {
 
         let version = self.options.version;
         // hack because bossland doesn't want to update their endpoint...
-        if (+version === 6304) version = 6301;
+        if (+version === 6702) version = 6701;
         return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
                 .then(version => {
                     self.hashingVersion = version;

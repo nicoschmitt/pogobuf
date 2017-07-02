@@ -16,7 +16,7 @@
 * 100% pure JS, no native library bindings
 
 ## Acknowledgements
-* Uses the excellent [POGOProtos](https://github.com/AeonLucid/POGOProtos) (via [node-pogo-protos](https://github.com/cyraxx/node-pogo-protos))
+* Uses the excellent [POGOProtos](https://github.com/AeonLucid/POGOProtos) (via [node-pogo-protos](https://github.com/pogosandbox/node-pogo-protos))
 
 # Documentation and usage
 You can find the documentation and other information in the [wiki](https://github.com/cyraxx/pogobuf/wiki).

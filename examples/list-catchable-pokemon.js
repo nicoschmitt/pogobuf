@@ -6,8 +6,8 @@
     request signature.
 */
 
-const pogobuf = require('pogobuf'),
-    POGOProtos = require('node-pogo-protos'),
+const pogobuf = require('pogobuf-vnext'),
+    POGOProtos = require('node-pogo-protos-vnext'),
     bluebird = require('bluebird');
 
 // Note: To avoid getting softbanned, change these coordinates to something close to where you

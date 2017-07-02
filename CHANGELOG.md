@@ -1,5 +1,10 @@
-# Work in Progress
-* Switch to protobufjs v6 (2.2.0)
+# In progress
+* 
+
+# 2.3.x
+* Improve PTC login internal (2.3.1)
+* Switch to protobufjs v6 (2.3.0) - not published
+* 0.67 (2.2.0)
 * Improve Google login error handling (2.1.1)
 * Add `client.getOption()` to get an option current value (2.1.1)
 * Minor text fix

@@ -5,8 +5,8 @@
     splitInventory() function.
     This one suppose node > 7.6.0 to use await/async
 */
-const pogobuf = require('pogobuf');
-const POGOProtos = require('node-pogo-protos');
+const pogobuf = require('pogobuf-vnext');
+const POGOProtos = require('node-pogo-protos-vnext');
 
 // Note: To avoid getting softbanned, change these coordinates to something close to where you
 // last used your account

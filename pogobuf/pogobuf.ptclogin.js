@@ -25,8 +25,13 @@ function PTCLogin() {
         self.cookies = request.jar();
         self.request = request.defaults({
             headers: {
-                'User-Agent': 'pokemongo/1 CFNetwork/811.4.18 Darwin/16.5.0'
+                'Accept': '*/*',
+                'User-Agent': 'pokemongo/1 CFNetwork/811.4.18 Darwin/16.5.0',
+                'Accept-Language': 'en-us',
+                'Accept-Encoding': 'gzip-deflate',
+                'X-Unity-Version': '5.5.1f1',
             },
+            gzip: true,
             jar: self.cookies,
         });
         Promise.promisifyAll(self.request);
