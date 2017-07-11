@@ -610,7 +610,8 @@ function Client(options) {
                 fort_id: fortID,
                 player_latitude: self.playerLatitude,
                 player_longitude: self.playerLongitude
-            })
+            }),
+            responseType: Responses.AddFortModifierResponse
         });
     };
 

@@ -2,6 +2,7 @@
 * 
 
 # 2.3.x
+* Fix addFortModifier response (2.3.2)
 * Improve PTC login internal (2.3.1)
 * Switch to protobufjs v6 (2.3.0) - not published
 * 0.67 (2.2.0)
