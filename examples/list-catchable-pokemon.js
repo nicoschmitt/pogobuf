@@ -4,48 +4,45 @@
     This example script repeatedly queries the area near the given coordinates for
     catchable Pokémon. It uses the pogodev hashing server to provide the encrypted
     request signature.
+    This is a really simple example, you should be mimicing the app much better than this.
 */
 
-const pogobuf = require('pogobuf-vnext'),
-    POGOProtos = require('node-pogo-protos-vnext'),
-    bluebird = require('bluebird');
+const pogobuf = require('pogobuf-vnext');
+const POGOProtos = require('node-pogo-protos-vnext');
 
 // Note: To avoid getting softbanned, change these coordinates to something close to where you
 // last used your account
-const lat = 37.7876146,
-    lng = -122.3884353;
+const lat = 48.8628407,
+    lng = 2.3286178;
 
-const username = 'your-google-username',
-    password = 'your-google-password',
-    hashingKey = 'your-pogodev-hashing-key';
-
-let client;
-
-new pogobuf.GoogleLogin().login(username, password).then(token => {
-    client = new pogobuf.Client({
-        authType: 'google',
-        authToken: token,
-        version: 5100, // Use API version 0.51 (minimum version for hashing server)
+async function Main() {
+    let client = new pogobuf.Client({
+        authType: 'ptc or google',
+        username: 'your username',
+        password: 'your password',
+        version: 6702,
         useHashingServer: true,
-        hashingKey: hashingKey
+        hashingKey: 'hash key'
     });
     client.setPosition(lat, lng);
-    return client.init();
-}).then(() => {
-    console.log('Authenticated, waiting for first map refresh (30s)');
-    setInterval(() => {
-        const cellIDs = pogobuf.Utils.getCellIDs(lat, lng, 5, 17);
-        return bluebird.resolve(client.getMapObjects(cellIDs, Array(cellIDs.length).fill(0))).then(mapObjects => {
-            return mapObjects.map_cells;
-        }).each(cell => {
-            console.log('Cell ' + cell.s2_cell_id.toString());
-            console.log('Has ' + cell.catchable_pokemons.length + ' catchable Pokemon');
-            return bluebird.resolve(cell.catchable_pokemons).each(catchablePokemon => {
-                console.log(' - A ' + pogobuf.Utils.getEnumKeyByValue(POGOProtos.Enums.PokemonId,
-                    catchablePokemon.pokemon_id) + ' is asking you to catch it.');
-            });
-        });
-    }, 30 * 1000);
-})
-.then(() => client.cleanUp())
-.catch(console.error);
+
+    await client.init();
+
+    const cellIDs = pogobuf.Utils.getCellIDs(lat, lng, 5, 17);
+    let mapObjects = await client.getMapObjects(cellIDs, Array(cellIDs.length).fill(0));
+
+    for (let cell of mapObjects.map_cells) {
+        console.log('Cell ' + cell.s2_cell_id.toString());
+        console.log('Has ' + cell.catchable_pokemons.length + ' catchable Pokemon');
+
+        for(let catchablePokemon of cell.catchable_pokemons) {
+            console.log(' - A ' + pogobuf.Utils.getEnumKeyByValue(POGOProtos.Enums.PokemonId,
+                catchablePokemon.pokemon_id) + ' is asking you to catch it.');
+        }
+    }
+
+    client.cleanUp();
+}
+
+Main();
+
