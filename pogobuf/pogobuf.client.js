@@ -37,6 +37,7 @@ const defaultOptions = {
     version: 6701,
     useHashingServer: true,
     hashingServer: 'http://pokehash.buddyauth.com/',
+    hashingVersion: null,
     hashingKey: null,
     deviceId: null,
 };
@@ -136,6 +137,9 @@ function Client(options) {
                                                                 { context: self.signatureEncryption });
 
         let promise = Promise.resolve(true);
+        if (self.options.useHashingServer) {
+            promise = promise.then(self.initializeHashingServer);
+        }
 
         // Handle login here if no auth token is provided
         if (!self.options.authToken) {
@@ -155,10 +159,6 @@ function Client(options) {
                             if (!token) throw new Error('Error during login, no token returned.');
                             self.options.authToken = token;
                         }));
-        }
-
-        if (self.options.useHashingServer) {
-            promise = promise.then(self.initializeHashingServer);
         }
 
         if (self.options.appSimulation) {
@@ -1388,13 +1388,17 @@ function Client(options) {
             self.setOption('hashingServer', self.options.hashingServer + '/');
         }
 
-        let version = self.options.version;
-        // hack because bossland doesn't want to update their endpoint...
-        if (+version === 6702) version = 6701;
-        return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
-                .then(version => {
-                    self.hashingVersion = version;
-                });
+        if (self.options.hashingVersion != null) {
+             self.hashingVersion = self.options.hashingVersion;
+        } else {
+            let version = self.options.version;
+            // hack because bossland doesn't want to update their endpoint...
+            if (+version === 6702) version = 6701;
+            return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
+                    .then(version => {
+                        self.hashingVersion = version;
+                    });
+        }
     };
 
     /*
