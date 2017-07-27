@@ -1121,6 +1121,9 @@ function Client(options) {
             } catch (e) {
                 throw new retry.StopError(e);
             }
+        } else if (envelope.platform_requests.length > 0) {
+            envelope.platform_requests = envelope.platform_requests
+                .filter(env => env.type !== PlatformRequestType.SEND_ENCRYPTED_SIGNATURE);
         }
 
         if (self.needsPtr8(requests)) {
