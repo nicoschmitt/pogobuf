@@ -1121,16 +1121,6 @@ function Client(options) {
             } catch (e) {
                 throw new retry.StopError(e);
             }
-        } else if (envelope.platform_requests.length > 0) {
-            envelope.platform_requests = envelope.platform_requests
-                .filter(env => env.type !== PlatformRequestType.SEND_ENCRYPTED_SIGNATURE);
-        }
-
-        if (self.needsPtr8(requests)) {
-            self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.UNKNOWN_PTR_8,
-                PlatformRequestMessages.UnknownPtr8Request.fromObject({
-                    message: self.ptr8,
-                }));
         }
 
         if (self.batchPftmRequests && self.batchPftmRequests.length > 0) {
@@ -1138,6 +1128,14 @@ function Client(options) {
                 let ptfm = self.batchPftmRequests[i];
                 self.addPlatformRequestToEnvelope(envelope, ptfm.type, ptfm.message);
             }
+        }
+
+        let already8 = envelope.platform_requests.some(r => r.type === PlatformRequestType.UNKNOWN_PTR_8);
+        if (!already8 && self.needsPtr8(requests)) {
+            self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.UNKNOWN_PTR_8,
+                PlatformRequestMessages.UnknownPtr8Request.fromObject({
+                    message: self.ptr8,
+                }));
         }
 
         let authTicket = envelope.auth_ticket;
@@ -1179,13 +1177,17 @@ function Client(options) {
                 max_tries: 5,
                 args: envelope.requests,
             })
-            .then(sigEncrypted =>
+            .then(sigEncrypted => {
+                // remove existing signature if any
+                envelope.platform_requests = envelope.platform_requests
+                    .filter(env => env.type !== PlatformRequestType.SEND_ENCRYPTED_SIGNATURE);
                 self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
                     PlatformRequestMessages.SendEncryptedSignatureRequest.fromObject({
                         encrypted_signature: sigEncrypted
                     })
-                )
-            );
+                );
+                return envelope;
+            });
     };
 
     /**
@@ -1295,7 +1297,6 @@ function Client(options) {
 
                 /* Auth expired, auto relogin */
                 if (responseEnvelope.status_code === 102 && self.login) {
-                    signedEnvelope.platform_requests = [];
                     self.login.reset();
                     return self.login
                                 .login(self.options.username, self.options.password)
@@ -1310,7 +1311,6 @@ function Client(options) {
 
                 /* Throttling, retry same request later */
                 if (responseEnvelope.status_code === 52 && self.endpoint !== INITIAL_ENDPOINT) {
-                    signedEnvelope.platform_requests = [];
                     return Promise.delay(2000).then(() => self.callRPC(requests, signedEnvelope));
                 }
 
