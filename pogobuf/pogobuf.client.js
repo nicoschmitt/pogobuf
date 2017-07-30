@@ -4,8 +4,8 @@ const Long = require('long'),
     POGOProtos = require('node-pogo-protos-vnext'),
     Signature = require('pogobuf-signature'),
     Promise = require('bluebird'),
-    request = require('request'),
     retry = require('bluebird-retry'),
+    request = require('request'),
     Utils = require('./pogobuf.utils.js'),
     PTCLogin = require('./pogobuf.ptclogin.js'),
     GoogleLogin = require('./pogobuf.googlelogin.js');
@@ -28,13 +28,12 @@ const defaultOptions = {
     authToken: null,
     username: null,
     password: null,
-    downloadSettings: true,
     appSimulation: false,
     proxy: null,
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 6701,
+    version: 6900,
     useHashingServer: true,
     hashingServer: 'http://pokehash.buddyauth.com/',
     hashingVersion: null,
@@ -1207,7 +1206,6 @@ function Client(options) {
 
             self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
 
-            signedEnvelope.platform_requests = [];
             resolve(self.callRPC(requests, signedEnvelope));
         });
     };
