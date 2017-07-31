@@ -4,8 +4,8 @@ const Long = require('long'),
     POGOProtos = require('node-pogo-protos-vnext'),
     Signature = require('pogobuf-signature'),
     Promise = require('bluebird'),
-    request = require('request'),
     retry = require('bluebird-retry'),
+    request = require('request'),
     Utils = require('./pogobuf.utils.js'),
     PTCLogin = require('./pogobuf.ptclogin.js'),
     GoogleLogin = require('./pogobuf.googlelogin.js');
@@ -28,13 +28,12 @@ const defaultOptions = {
     authToken: null,
     username: null,
     password: null,
-    downloadSettings: true,
     appSimulation: false,
     proxy: null,
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 6701,
+    version: 6900,
     useHashingServer: true,
     hashingServer: 'http://pokehash.buddyauth.com/',
     hashingVersion: null,
@@ -1123,18 +1122,19 @@ function Client(options) {
             }
         }
 
-        if (self.needsPtr8(requests)) {
-            self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.UNKNOWN_PTR_8,
-                PlatformRequestMessages.UnknownPtr8Request.fromObject({
-                    message: self.ptr8,
-                }));
-        }
-
         if (self.batchPftmRequests && self.batchPftmRequests.length > 0) {
             for (let i = 0; i < self.batchPftmRequests.length; i++) {
                 let ptfm = self.batchPftmRequests[i];
                 self.addPlatformRequestToEnvelope(envelope, ptfm.type, ptfm.message);
             }
+        }
+
+        let already8 = envelope.platform_requests.some(r => r.type === PlatformRequestType.UNKNOWN_PTR_8);
+        if (!already8 && self.needsPtr8(requests)) {
+            self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.UNKNOWN_PTR_8,
+                PlatformRequestMessages.UnknownPtr8Request.fromObject({
+                    message: self.ptr8,
+                }));
         }
 
         let authTicket = envelope.auth_ticket;
@@ -1176,13 +1176,17 @@ function Client(options) {
                 max_tries: 5,
                 args: envelope.requests,
             })
-            .then(sigEncrypted =>
+            .then(sigEncrypted => {
+                // remove existing signature if any
+                envelope.platform_requests = envelope.platform_requests
+                    .filter(env => env.type !== PlatformRequestType.SEND_ENCRYPTED_SIGNATURE);
                 self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
                     PlatformRequestMessages.SendEncryptedSignatureRequest.fromObject({
                         encrypted_signature: sigEncrypted
                     })
-                )
-            );
+                );
+                return envelope;
+            });
     };
 
     /**
@@ -1202,7 +1206,6 @@ function Client(options) {
 
             self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
 
-            signedEnvelope.platform_requests = [];
             resolve(self.callRPC(requests, signedEnvelope));
         });
     };
@@ -1292,7 +1295,6 @@ function Client(options) {
 
                 /* Auth expired, auto relogin */
                 if (responseEnvelope.status_code === 102 && self.login) {
-                    signedEnvelope.platform_requests = [];
                     self.login.reset();
                     return self.login
                                 .login(self.options.username, self.options.password)
@@ -1307,7 +1309,6 @@ function Client(options) {
 
                 /* Throttling, retry same request later */
                 if (responseEnvelope.status_code === 52 && self.endpoint !== INITIAL_ENDPOINT) {
-                    signedEnvelope.platform_requests = [];
                     return Promise.delay(2000).then(() => self.callRPC(requests, signedEnvelope));
                 }
 
