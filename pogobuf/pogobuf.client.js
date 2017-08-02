@@ -43,7 +43,7 @@ const defaultOptions = {
 
 /**
  * Helper function to encode proto
- * @param {Messsage} proto 
+ * @param {Messsage} proto
  * @return {Buffer} buffer
  */
 function encode(proto) {
@@ -78,11 +78,12 @@ function Client(options) {
 
     /**
      * Get the specified option
+     * @param {string} Option name
      * @return {any} Option value
      */
     this.getOption = function(option) {
         return self.options[option];
-    }
+    };
 
     /**
      * Sets the player's latitude and longitude.
@@ -722,11 +723,11 @@ function Client(options) {
         return self.callOrChain({
             type: RequestType.GYM_GET_INFO,
             message: RequestMessages.GymGetInfoMessage.fromObject({
-	            gym_id: gymId,
-	            player_lat_degrees: self.playerLatitude,
-	            player_lng_degrees: self.playerLatitude,
-	            gym_lat_degrees: gymLat,
-	            gym_lng_degrees: gymLng,
+                gym_id: gymId,
+                player_lat_degrees: self.playerLatitude,
+                player_lng_degrees: self.playerLatitude,
+                gym_lat_degrees: gymLat,
+                gym_lng_degrees: gymLng,
             }),
             responseType: Responses.GymGetInfoResponse
         });
@@ -892,7 +893,7 @@ function Client(options) {
             responseType: Responses.ListGymBadgesResponse
         });
     };
-    
+
     this.getGymBadgeDetails = function(fortId, latitude, longitude) {
         return self.callOrChain({
             type: RequestType.GET_GYM_BADGE_DETAILS,
@@ -935,12 +936,11 @@ function Client(options) {
      */
     this.batchAddPlatformRequest = function(type, message) {
         if (!self.batchPftmRequests) self.batchPftmRequests = [];
-        
-        self.batchPftmRequests.push({ 
+        self.batchPftmRequests.push({
             type: type,
             message: message,
         });
-    }
+    };
 
     /*
      * INTERNAL STUFF
@@ -1068,7 +1068,7 @@ function Client(options) {
      * @return {RequestEnvelope} The envelope (for convenience only)
      */
     this.addPlatformRequestToEnvelope = function(envelope, requestType, requestMessage) {
-        let encoded = encode(requestMessage);
+        const encoded = encode(requestMessage);
         envelope.platform_requests.push(
             POGOProtos.Networking.Envelopes.RequestEnvelope.PlatformRequest.fromObject({
                 type: requestType,
@@ -1124,12 +1124,12 @@ function Client(options) {
 
         if (self.batchPftmRequests && self.batchPftmRequests.length > 0) {
             for (let i = 0; i < self.batchPftmRequests.length; i++) {
-                let ptfm = self.batchPftmRequests[i];
+                const ptfm = self.batchPftmRequests[i];
                 self.addPlatformRequestToEnvelope(envelope, ptfm.type, ptfm.message);
             }
         }
 
-        let already8 = envelope.platform_requests.some(r => r.type === PlatformRequestType.UNKNOWN_PTR_8);
+        const already8 = envelope.platform_requests.some(r => r.type === PlatformRequestType.UNKNOWN_PTR_8);
         if (!already8 && self.needsPtr8(requests)) {
             self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.UNKNOWN_PTR_8,
                 PlatformRequestMessages.UnknownPtr8Request.fromObject({
