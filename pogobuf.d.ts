@@ -92,7 +92,8 @@ declare namespace pogobuf {
         ): pogobuf.Client;
 
         claimCodename(
-            codename: string
+            codename: string,
+            force?: boolean
         ): pogobuf.Client;
 
         collectDailyBonus(
@@ -172,7 +173,10 @@ declare namespace pogobuf {
             deviceManufacturer: string,
             deviceModel: string,
             locale: string,
-            appVersion: number
+            appVersion: number,
+            paginate?: boolean,
+            pageOffset?: number,
+            pageTimestamp?: number
         ): pogobuf.Client;
 
         getBuddyWalked(
@@ -214,17 +218,23 @@ declare namespace pogobuf {
         getMapObjects(
             cellIDs: string[] | number[] | Long[],
             sinceTimestamps: string[] | number[] | Long[]
-        ): Promise<POGOProtos.Networking.Responses.GetMapObjectsResponse>;
+        ): pogobuf.Client;
 
         getPlayer(
             country: string,
             language: string,
             timezone: string
-        ): Promise<POGOProtos.Networking.Responses.GetPlayerResponse>;
+        ): pogobuf.Client;
 
         getPlayerProfile(
             playerName: string
-        ): Promise<POGOProtos.Networking.Responses.GetPlayerProfileResponse>;
+        ): pogobuf.Client;
+
+        gymGetInfo(
+            gymID: string,
+            gymLatitude: number,
+            gymLongitude: number
+        ): pogobuf.Client;
 
         incenseEncounter(
             encounterID: string | number | Long,
@@ -248,8 +258,8 @@ declare namespace pogobuf {
 
         markTutorialComplete(
             tutorialsCompleted: POGOProtos.Enums.TutorialState[],
-            sendMarketingEmails: boolean,
-            sendPushNotifications: boolean
+            sendMarketingEmails?: boolean,
+            sendPushNotifications?: boolean
         ): Promise<POGOProtos.Networking.Responses.MarkTutorialCompleteResponse>;
 
         nicknamePokemon(
@@ -347,6 +357,17 @@ declare namespace pogobuf {
         verifyChallenge(
             token: string
         ): Promise<POGOProtos.Networking.Responses.VerifyChallengeResponse>;
+
+        // platform client action
+
+        optOutPushNotificationCategory(
+            categories: string[]
+        ): pogobuf.Client;
+
+        registerPushNotification(
+            apnToken?: POGOProtos.Networking.Requests.Messages.RegisterPushNotificationMessage.ApnToken,
+            gcmToken?: POGOProtos.Networking.Requests.Messages.RegisterPushNotificationMessage.GcmToken
+        ): pogobuf.Client;
     }
 
     /**
