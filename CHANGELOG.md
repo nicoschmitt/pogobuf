@@ -1,7 +1,11 @@
 # In progress
-* 
 
 # 2.3.x
+* Fix typings (2.3.5)
+* Fix an issue when resending request including more than one signature (2.3.5)
+* Option `hashingVersion` allows you to bypass hash version auto detect mecanism (2.3.5)
+* 0.69.x (2.3.4)
+* Some clean up (2.3.3)
 * Fix addFortModifier response (2.3.2)
 * Improve PTC login internal (2.3.1)
 * Switch to protobufjs v6 (2.3.0) - not published
