@@ -989,12 +989,15 @@ function Client(options) {
         // dirty fix to mimic the real app
         if (self.rpcId === 2) {
             self.rpcId++;
+            self.rpcIdHigh = 0x41a70;
             return Long.fromString('0x10d63af100000003', true, 16);
         } else if (self.rpcId === 3) {
             self.rpcId++;
+            self.rpcIdHigh = 0x10d63af1;
             return Long.fromString('0x41a700000002', true, 16);
         } else if (self.rpcId === 6) {
             self.rpcId++;
+            self.rpcIdHigh = (Math.pow(7, 5) * self.rpcIdHigh) % (Math.pow(2, 31) - 1);
         }
         self.rpcIdHigh = (Math.pow(7, 5) * self.rpcIdHigh) % (Math.pow(2, 31) - 1);
         return new Long(self.rpcId++, self.rpcIdHigh, true);
