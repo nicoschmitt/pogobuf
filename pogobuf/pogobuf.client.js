@@ -10,8 +10,6 @@ const Long = require('long'),
     PTCLogin = require('./pogobuf.ptclogin.js'),
     GoogleLogin = require('./pogobuf.googlelogin.js');
 
-const Lehmer = Utils.Random;
-
 const RequestType = POGOProtos.Networking.Requests.RequestType,
     PlatformRequestType = POGOProtos.Networking.Platform.PlatformRequestType,
     PlatformRequestMessages = POGOProtos.Networking.Platform.Requests,
@@ -961,9 +959,9 @@ function Client(options) {
     this.options = Object.assign({}, defaultOptions, options || {});
     this.authTicket = null;
     this.rpcId = 2;
+    this.rpcIdHigh = 1; // for requestId generation
     this.lastHashingKeyIndex = 0;
     this.firstGetMapObjects = true;
-    this.lehmer = new Lehmer(16807);
     this.ptr8 = INITIAL_PTR8;
 
     /**
@@ -988,7 +986,8 @@ function Client(options) {
      * @return {Long}
      */
     this.getRequestID = function() {
-        return new Long(self.rpcId++, this.lehmer.nextInt());
+        self.rpcIdHigh = (Math.pow(7, 5) * self.rpcIdHigh) % (Math.pow(2, 31) - 1);
+        return new Long(self.rpcId++, self.rpcIdHigh, true);
     };
 
     /**

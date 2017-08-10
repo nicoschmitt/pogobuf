@@ -13,5 +13,5 @@ engines:
         enabled: false
     enabled: true
 exclude_paths:
-- examples/
-- node_modules/
+  - examples/
+  - node_modules/
