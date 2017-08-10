@@ -10,8 +10,6 @@ const Long = require('long'),
     PTCLogin = require('./pogobuf.ptclogin.js'),
     GoogleLogin = require('./pogobuf.googlelogin.js');
 
-const Lehmer = Utils.Random;
-
 const RequestType = POGOProtos.Networking.Requests.RequestType,
     PlatformRequestType = POGOProtos.Networking.Platform.PlatformRequestType,
     PlatformRequestMessages = POGOProtos.Networking.Platform.Requests,
@@ -43,7 +41,7 @@ const defaultOptions = {
 
 /**
  * Helper function to encode proto
- * @param {Messsage} proto 
+ * @param {Messsage} proto
  * @return {Buffer} buffer
  */
 function encode(proto) {
@@ -78,11 +76,12 @@ function Client(options) {
 
     /**
      * Get the specified option
+     * @param {string} Option name
      * @return {any} Option value
      */
     this.getOption = function(option) {
         return self.options[option];
-    }
+    };
 
     /**
      * Sets the player's latitude and longitude.
@@ -722,11 +721,11 @@ function Client(options) {
         return self.callOrChain({
             type: RequestType.GYM_GET_INFO,
             message: RequestMessages.GymGetInfoMessage.fromObject({
-	            gym_id: gymId,
-	            player_lat_degrees: self.playerLatitude,
-	            player_lng_degrees: self.playerLatitude,
-	            gym_lat_degrees: gymLat,
-	            gym_lng_degrees: gymLng,
+                gym_id: gymId,
+                player_lat_degrees: self.playerLatitude,
+                player_lng_degrees: self.playerLatitude,
+                gym_lat_degrees: gymLat,
+                gym_lng_degrees: gymLng,
             }),
             responseType: Responses.GymGetInfoResponse
         });
@@ -892,7 +891,7 @@ function Client(options) {
             responseType: Responses.ListGymBadgesResponse
         });
     };
-    
+
     this.getGymBadgeDetails = function(fortId, latitude, longitude) {
         return self.callOrChain({
             type: RequestType.GET_GYM_BADGE_DETAILS,
@@ -935,12 +934,11 @@ function Client(options) {
      */
     this.batchAddPlatformRequest = function(type, message) {
         if (!self.batchPftmRequests) self.batchPftmRequests = [];
-        
-        self.batchPftmRequests.push({ 
+        self.batchPftmRequests.push({
             type: type,
             message: message,
         });
-    }
+    };
 
     /*
      * INTERNAL STUFF
@@ -961,9 +959,9 @@ function Client(options) {
     this.options = Object.assign({}, defaultOptions, options || {});
     this.authTicket = null;
     this.rpcId = 2;
+    this.rpcIdHigh = 1; // for requestId generation
     this.lastHashingKeyIndex = 0;
     this.firstGetMapObjects = true;
-    this.lehmer = new Lehmer(16807);
     this.ptr8 = INITIAL_PTR8;
 
     /**
@@ -988,7 +986,21 @@ function Client(options) {
      * @return {Long}
      */
     this.getRequestID = function() {
-        return new Long(self.rpcId++, this.lehmer.nextInt());
+        // dirty fix to mimic the real app
+        if (self.rpcId === 2) {
+            self.rpcId++;
+            self.rpcIdHigh = 0x41a70;
+            return Long.fromString('0x10d63af100000003', true, 16);
+        } else if (self.rpcId === 3) {
+            self.rpcId++;
+            self.rpcIdHigh = 0x10d63af1;
+            return Long.fromString('0x41a700000002', true, 16);
+        } else if (self.rpcId === 6) {
+            self.rpcId++;
+            self.rpcIdHigh = (Math.pow(7, 5) * self.rpcIdHigh) % (Math.pow(2, 31) - 1);
+        }
+        self.rpcIdHigh = (Math.pow(7, 5) * self.rpcIdHigh) % (Math.pow(2, 31) - 1);
+        return new Long(self.rpcId++, self.rpcIdHigh, true);
     };
 
     /**
@@ -1068,7 +1080,7 @@ function Client(options) {
      * @return {RequestEnvelope} The envelope (for convenience only)
      */
     this.addPlatformRequestToEnvelope = function(envelope, requestType, requestMessage) {
-        let encoded = encode(requestMessage);
+        const encoded = encode(requestMessage);
         envelope.platform_requests.push(
             POGOProtos.Networking.Envelopes.RequestEnvelope.PlatformRequest.fromObject({
                 type: requestType,
@@ -1124,12 +1136,12 @@ function Client(options) {
 
         if (self.batchPftmRequests && self.batchPftmRequests.length > 0) {
             for (let i = 0; i < self.batchPftmRequests.length; i++) {
-                let ptfm = self.batchPftmRequests[i];
+                const ptfm = self.batchPftmRequests[i];
                 self.addPlatformRequestToEnvelope(envelope, ptfm.type, ptfm.message);
             }
         }
 
-        let already8 = envelope.platform_requests.some(r => r.type === PlatformRequestType.UNKNOWN_PTR_8);
+        const already8 = envelope.platform_requests.some(r => r.type === PlatformRequestType.UNKNOWN_PTR_8);
         if (!already8 && self.needsPtr8(requests)) {
             self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.UNKNOWN_PTR_8,
                 PlatformRequestMessages.UnknownPtr8Request.fromObject({
