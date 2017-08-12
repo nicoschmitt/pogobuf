@@ -1,6 +1,7 @@
 # In progress
 
 # 2.3.x
+* Fix request ID generation (2.3.7)
 * Fix typings (2.3.5)
 * Fix an issue when resending request including more than one signature (2.3.5)
 * Option `hashingVersion` allows you to bypass hash version auto detect mecanism (2.3.5)
