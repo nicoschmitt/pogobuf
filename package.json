@@ -1,6 +1,6 @@
 {
   "name": "pogobuf-vnext",
-  "version": "2.3.7",
+  "version": "2.3.8",
   "description": "Pokémon Go Client Library (vnext)",
   "main": "pogobuf/pogobuf.js",
   "typings": "./pogobuf.d.ts",

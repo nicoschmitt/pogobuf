@@ -1,6 +1,7 @@
 # In progress
 
 # 2.3.x
+* Bug in getGetInfo data sent (2.3.8)
 * Fix request ID generation (2.3.7)
 * Fix typings (2.3.5)
 * Fix an issue when resending request including more than one signature (2.3.5)
