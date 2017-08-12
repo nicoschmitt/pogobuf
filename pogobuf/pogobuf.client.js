@@ -723,7 +723,7 @@ function Client(options) {
             message: RequestMessages.GymGetInfoMessage.fromObject({
                 gym_id: gymId,
                 player_lat_degrees: self.playerLatitude,
-                player_lng_degrees: self.playerLatitude,
+                player_lng_degrees: self.playerLongitude,
                 gym_lat_degrees: gymLat,
                 gym_lng_degrees: gymLng,
             }),
