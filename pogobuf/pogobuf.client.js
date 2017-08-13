@@ -182,6 +182,8 @@ function Client(options) {
      */
     this.cleanUp = function() {
         if (self.signatureGenerator) self.signatureGenerator.clean();
+        self.rpcId = 2;
+        self.rpcIdHigh = 1;
         self.signatureGenerator = null;
         self.options.authToken = null;
         self.authTicket = null;
