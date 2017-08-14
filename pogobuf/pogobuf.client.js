@@ -940,6 +940,7 @@ function Client(options) {
             type: type,
             message: message,
         });
+        return self;
     };
 
     /*
