@@ -36,6 +36,7 @@ module.exports = {
             "WithStatement"
         ],
         "no-shadow": 1,
+        "no-underscore-dangle": ["error", { "allow": ["_requestType", "_ptfmRequestType"] }],
         "no-use-before-define": 1,
         "no-var": 0,
         "object-shorthand": [2, "consistent"],

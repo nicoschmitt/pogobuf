@@ -64,7 +64,7 @@ function Client(options) {
      * PUBLIC METHODS
      */
 
-     /**
+    /**
       * Sets the specified client option to the given value.
       * Note that not all options support changes after client initialization.
       * @param {string} option - Option name
@@ -76,7 +76,7 @@ function Client(options) {
 
     /**
      * Get the specified option
-     * @param {string} Option name
+     * @param {string} option name
      * @return {any} Option value
      */
     this.getOption = function(option) {
@@ -132,7 +132,7 @@ function Client(options) {
             initTime: (new Date().getTime() - 3500 - Math.random() * 5000),
         });
         self.signatureEncryption.encryptAsync = Promise.promisify(self.signatureEncryption.encrypt,
-                                                                { context: self.signatureEncryption });
+            { context: self.signatureEncryption });
 
         let promise = Promise.resolve(true);
         if (self.options.useHashingServer) {
@@ -152,26 +152,26 @@ function Client(options) {
             if (self.options.proxy) self.login.setProxy(self.options.proxy);
 
             promise = promise
-                        .then(() => self.login.login(self.options.username, self.options.password)
-                        .then(token => {
-                            if (!token) throw new Error('Error during login, no token returned.');
-                            self.options.authToken = token;
-                        }));
+                .then(() => self.login.login(self.options.username, self.options.password))
+                .then(token => {
+                    if (!token) throw new Error('Error during login, no token returned.');
+                    self.options.authToken = token;
+                });
         }
 
         if (self.options.appSimulation) {
             const ios = POGOProtos.Enums.Platform.IOS;
             const version = +self.options.version;
             promise = promise.then(() => self.batchStart().batchCall())
-                        .then(() => self.getPlayer('US', 'en', 'Europe/Paris'))
-                        .then(() => self.batchStart()
-                                        .downloadRemoteConfigVersion(ios, '', '', '', version)
-                                        .checkChallenge()
-                                        .getHatchedEggs()
-                                        .getInventory()
-                                        .checkAwardedBadges()
-                                        .downloadSettings()
-                                        .batchCall());
+                .then(() => self.getPlayer('US', 'en', 'Europe/Paris'))
+                .then(() => self.batchStart()
+                    .downloadRemoteConfigVersion(ios, '', '', '', version)
+                    .checkChallenge()
+                    .getHatchedEggs()
+                    .getInventory()
+                    .checkAwardedBadges()
+                    .downloadSettings()
+                    .batchCall());
         }
 
         return promise;
@@ -734,7 +734,7 @@ function Client(options) {
     };
 
     this.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion,
-                                    paginate, pageOffset, pageTimestamp) {
+        paginate, pageOffset, pageTimestamp) {
         return self.callOrChain({
             type: RequestType.GET_ASSET_DIGEST,
             message: RequestMessages.GetAssetDigestMessage.fromObject({
@@ -1165,19 +1165,19 @@ function Client(options) {
         self.signatureEncryption.setLocation(envelope.latitude, envelope.longitude, envelope.accuracy);
 
         return retry(() => self.signatureEncryption.encryptAsync(envelope.requests)
-                        .catch(err => {
-                            if (err.name === 'HashServerError' && err.retry) {
-                                throw err;
-                            } else {
-                                throw new retry.StopError(err);
-                            }
-                        }),
-            {
-                interval: 1000,
-                backoff: 2,
-                max_tries: 5,
-                args: envelope.requests,
-            })
+            .catch(err => {
+                if (err.name === 'HashServerError' && err.retry) {
+                    throw err;
+                } else {
+                    throw new retry.StopError(err);
+                }
+            }),
+        {
+            interval: 1000,
+            backoff: 2,
+            max_tries: 5,
+            args: envelope.requests,
+        })
             .then(sigEncrypted => {
                 // remove existing signature if any
                 envelope.platform_requests = envelope.platform_requests
@@ -1246,7 +1246,7 @@ function Client(options) {
                     proxy: self.options.proxy,
                     body: encode(signedEnvelope),
                 })
-                .then(response => ({ signedEnvelope: signedEnvelope, response: response }))
+                    .then(response => ({ signedEnvelope: signedEnvelope, response: response }))
             )
             .then(result => {
                 const signedEnvelope = result.signedEnvelope;
@@ -1299,14 +1299,14 @@ function Client(options) {
                 if (responseEnvelope.status_code === 102 && self.login) {
                     self.login.reset();
                     return self.login
-                                .login(self.options.username, self.options.password)
-                                .then(token => {
-                                    self.options.authToken = token;
-                                    self.authTicket = null;
-                                    signedEnvelope.auth_ticket = null;
-                                    signedEnvelope.auth_info = this.getAuthInfoObject();
-                                    return self.callRPC(requests, signedEnvelope);
-                                });
+                        .login(self.options.username, self.options.password)
+                        .then(token => {
+                            self.options.authToken = token;
+                            self.authTicket = null;
+                            signedEnvelope.auth_ticket = null;
+                            signedEnvelope.auth_info = this.getAuthInfoObject();
+                            return self.callRPC(requests, signedEnvelope);
+                        });
                 }
 
                 /* Throttling, retry same request later */
@@ -1361,8 +1361,8 @@ function Client(options) {
                     responseEnvelope.platform_returns.forEach(platformReturn => {
                         if (platformReturn.type === PlatformRequestType.GET_STORE_ITEMS) {
                             const store = PlatformResponses.GetStoreItemsResponse.decode(platformReturn.response);
-                            store._requestType = -1,
-                            store._ptfmRequestType = PlatformRequestType.GET_STORE_ITEMS,
+                            store._requestType = -1;
+                            store._ptfmRequestType = PlatformRequestType.GET_STORE_ITEMS;
                             responses.push(store);
                         }
                     });
@@ -1392,15 +1392,16 @@ function Client(options) {
         }
 
         if (self.options.hashingVersion != null) {
-             self.hashingVersion = self.options.hashingVersion;
+            self.hashingVersion = self.options.hashingVersion;
+            return Promise.resolve();
         } else {
             let version = self.options.version;
             // hack because bossland doesn't want to update their endpoint...
             if (+version === 6702) version = 6701;
             return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
-                    .then(version => {
-                        self.hashingVersion = version;
-                    });
+                .then(hashVersion => {
+                    self.hashingVersion = hashVersion;
+                });
         }
     };
 
