@@ -369,7 +369,6 @@ function Client(options) {
                 request_message: encoded,
             })
         );
-
         return envelope;
     };
 

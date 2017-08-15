@@ -1,4 +1,7 @@
-# In progress
+# In progress (2.4.0)
+* Code clean up and refactor (api definition in a separate file) (2.4.0)
+* `addPlatformRequestToEnvelope` does not break chain anymore (2.4.0)
+* Cleanup restart requestid sequence (2.4.0)
 
 # 2.3.x
 * Bug in getGetInfo data sent (2.3.8)
