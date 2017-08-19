@@ -1,5 +1,3 @@
-'use strict';
-
 const Long = require('long'),
     POGOProtos = require('node-pogo-protos-vnext'),
     Signature = require('pogobuf-signature'),
@@ -240,14 +238,13 @@ function Client(options) {
      */
 
     this.request = request.defaults({
+        encoding: null,
+        gzip: true,
         headers: {
             'User-Agent': 'Niantic App',
-            'Accept': '*/*',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept-Language': 'en-us',
+            'Content-Type': 'application/binary',
+            'Accept-Encoding': 'identity, gzip',
         },
-        gzip: true,
-        encoding: null,
     });
     Promise.promisifyAll(this.request);
 
