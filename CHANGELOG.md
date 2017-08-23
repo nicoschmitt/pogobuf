@@ -3,6 +3,7 @@
 * `addPlatformRequestToEnvelope` does not break chain anymore (2.4.0)
 * Fix http headers on rpc requests (2.4.0)
 * Cleanup restart requestid sequence (2.4.0)
+* Add `getRaidDetails` (2.4.1)
 
 # 2.3.x
 * Bug in getGetInfo data sent (2.3.8)
