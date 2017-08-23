@@ -502,6 +502,21 @@ module.exports.defineApiCalls = function(self) {
         });
     };
 
+    self.getRaidDetails = function(raidSeed, gymId, lobbyIds) {
+        if (!Array.isArray(lobbyIds)) lobbyIds = [lobbyIds];
+        return self.callOrChain({
+            type: RequestType.GET_RAID_DETAILS,
+            message: RequestMessages.GetRaidDetailsMessage.fromObject({
+                raid_seed: raidSeed,
+                gym_id: gymId,
+                lobby_id: lobbyIds,
+                player_lat_degrees: self.playerLatitude,
+                player_lng_degrees: self.playerLongitude,
+            }),
+            responseType: Responses.GetRaidDetailsResponse,
+        });
+    };
+
     self.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion,
         paginate, pageOffset, pageTimestamp) {
         return self.callOrChain({
