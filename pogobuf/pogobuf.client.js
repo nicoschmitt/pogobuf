@@ -1,5 +1,3 @@
-'use strict';
-
 const Long = require('long'),
     POGOProtos = require('node-pogo-protos-vnext'),
     Signature = require('pogobuf-signature'),
@@ -8,14 +6,13 @@ const Long = require('long'),
     request = require('request'),
     Utils = require('./pogobuf.utils.js'),
     PTCLogin = require('./pogobuf.ptclogin.js'),
-    GoogleLogin = require('./pogobuf.googlelogin.js');
+    GoogleLogin = require('./pogobuf.googlelogin.js'),
+    ApiCalls = require('./pogobuf.apicalls.js');
 
 const RequestType = POGOProtos.Networking.Requests.RequestType,
     PlatformRequestType = POGOProtos.Networking.Platform.PlatformRequestType,
     PlatformRequestMessages = POGOProtos.Networking.Platform.Requests,
-    PlatformResponses = POGOProtos.Networking.Platform.Responses,
-    RequestMessages = POGOProtos.Networking.Requests.Messages,
-    Responses = POGOProtos.Networking.Responses;
+    PlatformResponses = POGOProtos.Networking.Platform.Responses;
 
 const INITIAL_ENDPOINT = 'https://pgorelease.nianticlabs.com/plfe/rpc';
 const INITIAL_PTR8 = '15c79df0558009a4242518d2ab65de2a59e09499';
@@ -31,7 +28,7 @@ const defaultOptions = {
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 6900,
+    version: 6901,
     useHashingServer: true,
     hashingServer: 'http://pokehash.buddyauth.com/',
     hashingVersion: null,
@@ -64,7 +61,7 @@ function Client(options) {
      * PUBLIC METHODS
      */
 
-     /**
+    /**
       * Sets the specified client option to the given value.
       * Note that not all options support changes after client initialization.
       * @param {string} option - Option name
@@ -76,7 +73,7 @@ function Client(options) {
 
     /**
      * Get the specified option
-     * @param {string} Option name
+     * @param {string} option name
      * @return {any} Option value
      */
     this.getOption = function(option) {
@@ -132,7 +129,7 @@ function Client(options) {
             initTime: (new Date().getTime() - 3500 - Math.random() * 5000),
         });
         self.signatureEncryption.encryptAsync = Promise.promisify(self.signatureEncryption.encrypt,
-                                                                { context: self.signatureEncryption });
+            { context: self.signatureEncryption });
 
         let promise = Promise.resolve(true);
         if (self.options.useHashingServer) {
@@ -152,26 +149,26 @@ function Client(options) {
             if (self.options.proxy) self.login.setProxy(self.options.proxy);
 
             promise = promise
-                        .then(() => self.login.login(self.options.username, self.options.password)
-                        .then(token => {
-                            if (!token) throw new Error('Error during login, no token returned.');
-                            self.options.authToken = token;
-                        }));
+                .then(() => self.login.login(self.options.username, self.options.password))
+                .then(token => {
+                    if (!token) throw new Error('Error during login, no token returned.');
+                    self.options.authToken = token;
+                });
         }
 
         if (self.options.appSimulation) {
             const ios = POGOProtos.Enums.Platform.IOS;
             const version = +self.options.version;
             promise = promise.then(() => self.batchStart().batchCall())
-                        .then(() => self.getPlayer('US', 'en', 'Europe/Paris'))
-                        .then(() => self.batchStart()
-                                        .downloadRemoteConfigVersion(ios, '', '', '', version)
-                                        .checkChallenge()
-                                        .getHatchedEggs()
-                                        .getInventory()
-                                        .checkAwardedBadges()
-                                        .downloadSettings()
-                                        .batchCall());
+                .then(() => self.getPlayer('US', 'en', 'Europe/Paris'))
+                .then(() => self.batchStart()
+                    .downloadRemoteConfigVersion(ios, '', '', '', version)
+                    .checkChallenge()
+                    .getHatchedEggs()
+                    .getInventory()
+                    .checkAwardedBadges()
+                    .downloadSettings()
+                    .batchCall());
         }
 
         return promise;
@@ -182,6 +179,8 @@ function Client(options) {
      */
     this.cleanUp = function() {
         if (self.signatureGenerator) self.signatureGenerator.clean();
+        self.rpcId = 2;
+        self.rpcIdHigh = 1;
         self.signatureGenerator = null;
         self.options.authToken = null;
         self.authTicket = null;
@@ -230,729 +229,22 @@ function Client(options) {
     };
 
     /*
-     * API CALLS (in order of RequestType enum)
+     * Implement api calls
      */
-
-    this.getPlayer = function(country, language, timezone) {
-        return self.callOrChain({
-            type: RequestType.GET_PLAYER,
-            message: RequestMessages.GetPlayerMessage.fromObject({
-                player_locale: {
-                    country: country,
-                    language: language,
-                    timezone: timezone
-                }
-            }),
-            responseType: Responses.GetPlayerResponse
-        });
-    };
-
-    this.getInventory = function(lastTimestamp) {
-        return self.callOrChain({
-            type: RequestType.GET_INVENTORY,
-            message: RequestMessages.GetInventoryMessage.fromObject({
-                last_timestamp_ms: lastTimestamp
-            }),
-            responseType: Responses.GetInventoryResponse
-        });
-    };
-
-    this.downloadSettings = function(hash) {
-        return self.callOrChain({
-            type: RequestType.DOWNLOAD_SETTINGS,
-            message: RequestMessages.DownloadSettingsMessage.fromObject({
-                hash: hash
-            }),
-            responseType: Responses.DownloadSettingsResponse
-        });
-    };
-
-    this.downloadItemTemplates = function(paginate, pageOffset, pageTimestamp) {
-        return self.callOrChain({
-            type: RequestType.DOWNLOAD_ITEM_TEMPLATES,
-            message: RequestMessages.DownloadItemTemplatesMessage.fromObject({
-                paginate: paginate,
-                page_offset: pageOffset,
-                page_timestamp: pageTimestamp
-            }),
-            responseType: Responses.DownloadItemTemplatesResponse
-        });
-    };
-
-    this.downloadRemoteConfigVersion = function(platform, deviceManufacturer, deviceModel, locale, appVersion) {
-        return self.callOrChain({
-            type: RequestType.DOWNLOAD_REMOTE_CONFIG_VERSION,
-            message: RequestMessages.DownloadRemoteConfigVersionMessage.fromObject({
-                platform: platform,
-                device_manufacturer: deviceManufacturer,
-                device_model: deviceModel,
-                locale: locale,
-                app_version: appVersion,
-            }),
-            responseType: Responses.DownloadRemoteConfigVersionResponse
-        });
-    };
-
-    this.registerBackgroundDevice = function(deviceType, deviceID) {
-        return self.callOrChain({
-            type: RequestType.REGISTER_BACKGROUND_DEVICE,
-            message: RequestMessages.RegisterBackgroundDeviceMessage.fromObject({
-                device_type: deviceType,
-                device_id: deviceID
-            }),
-            responseType: Responses.RegisterBackgroundDeviceResponse
-        });
-    };
-
-    this.fortSearch = function(fortID, fortLatitude, fortLongitude) {
-        return self.callOrChain({
-            type: RequestType.FORT_SEARCH,
-            message: RequestMessages.FortSearchMessage.fromObject({
-                fort_id: fortID,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude,
-                fort_latitude: fortLatitude,
-                fort_longitude: fortLongitude
-            }),
-            responseType: Responses.FortSearchResponse
-        });
-    };
-
-    this.encounter = function(encounterID, spawnPointID) {
-        return self.callOrChain({
-            type: RequestType.ENCOUNTER,
-            message: RequestMessages.EncounterMessage.fromObject({
-                encounter_id: encounterID,
-                spawn_point_id: spawnPointID,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.EncounterResponse
-        });
-    };
-
-    this.catchPokemon = function(encounterID, pokeballItemID, normalizedReticleSize, spawnPointID, hitPokemon,
-        spinModifier, normalizedHitPosition) {
-        return self.callOrChain({
-            type: RequestType.CATCH_POKEMON,
-            message: RequestMessages.CatchPokemonMessage.fromObject({
-                encounter_id: encounterID,
-                pokeball: pokeballItemID,
-                normalized_reticle_size: normalizedReticleSize,
-                spawn_point_id: spawnPointID,
-                hit_pokemon: hitPokemon,
-                spin_modifier: spinModifier,
-                normalized_hit_position: normalizedHitPosition
-            }),
-            responseType: Responses.CatchPokemonResponse
-        });
-    };
-
-    this.fortDetails = function(fortID, fortLatitude, fortLongitude) {
-        return self.callOrChain({
-            type: RequestType.FORT_DETAILS,
-            message: RequestMessages.FortDetailsMessage.fromObject({
-                fort_id: fortID,
-                latitude: fortLatitude,
-                longitude: fortLongitude
-            }),
-            responseType: Responses.FortDetailsResponse
-        });
-    };
-
-    this.getMapObjects = function(cellIDs, sinceTimestamps) {
-        return self.callOrChain({
-            type: RequestType.GET_MAP_OBJECTS,
-            message: RequestMessages.GetMapObjectsMessage.fromObject({
-                cell_id: cellIDs,
-                since_timestamp_ms: sinceTimestamps,
-                latitude: self.playerLatitude,
-                longitude: self.playerLongitude
-            }),
-            responseType: Responses.GetMapObjectsResponse
-        });
-    };
-
-    this.fortDeployPokemon = function(fortID, pokemonID) {
-        return self.callOrChain({
-            type: RequestType.FORT_DEPLOY_POKEMON,
-            message: RequestMessages.FortDeployPokemonMessage.fromObject({
-                fort_id: fortID,
-                pokemon_id: pokemonID,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.FortDeployPokemonResponse
-        });
-    };
-
-    this.fortRecallPokemon = function(fortID, pokemonID) {
-        return self.callOrChain({
-            type: RequestType.FORT_RECALL_POKEMON,
-            message: RequestMessages.FortRecallPokemonMessage.fromObject({
-                fort_id: fortID,
-                pokemon_id: pokemonID,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.FortRecallPokemonResponse
-        });
-    };
-
-    this.releasePokemon = function(pokemonIDs) {
-        if (!Array.isArray(pokemonIDs)) pokemonIDs = [pokemonIDs];
-
-        return self.callOrChain({
-            type: RequestType.RELEASE_POKEMON,
-            message: RequestMessages.ReleasePokemonMessage.fromObject({
-                pokemon_id: pokemonIDs.length === 1 ? pokemonIDs[0] : undefined,
-                pokemon_ids: pokemonIDs.length > 1 ? pokemonIDs : undefined
-            }),
-            responseType: Responses.ReleasePokemonResponse
-        });
-    };
-
-    this.useItemPotion = function(itemID, pokemonID) {
-        return self.callOrChain({
-            type: RequestType.USE_ITEM_POTION,
-            message: RequestMessages.UseItemPotionMessage.fromObject({
-                item_id: itemID,
-                pokemon_id: pokemonID
-            }),
-            responseType: Responses.UseItemPotionResponse
-        });
-    };
-
-    this.useItemCapture = function(itemID, encounterID, spawnPointID) {
-        return self.callOrChain({
-            type: RequestType.USE_ITEM_CAPTURE,
-            message: RequestMessages.UseItemCaptureMessage.fromObject({
-                item_id: itemID,
-                encounter_id: encounterID,
-                spawn_point_id: spawnPointID
-            }),
-            responseType: Responses.UseItemCaptureResponse
-        });
-    };
-
-    this.useItemRevive = function(itemID, pokemonID) {
-        return self.callOrChain({
-            type: RequestType.USE_ITEM_REVIVE,
-            message: RequestMessages.UseItemReviveMessage.fromObject({
-                item_id: itemID,
-                pokemon_id: pokemonID
-            }),
-            responseType: Responses.UseItemReviveResponse
-        });
-    };
-
-    this.getPlayerProfile = function(playerName) {
-        return self.callOrChain({
-            type: RequestType.GET_PLAYER_PROFILE,
-            message: RequestMessages.GetPlayerProfileMessage.fromObject({
-                player_name: playerName
-            }),
-            responseType: Responses.GetPlayerProfileResponse
-        });
-    };
-
-    this.evolvePokemon = function(pokemonID, evolutionRequirementItemID) {
-        return self.callOrChain({
-            type: RequestType.EVOLVE_POKEMON,
-            message: RequestMessages.EvolvePokemonMessage.fromObject({
-                pokemon_id: pokemonID,
-                evolution_item_requirement: evolutionRequirementItemID
-            }),
-            responseType: Responses.EvolvePokemonResponse
-        });
-    };
-
-    this.getHatchedEggs = function() {
-        return self.callOrChain({
-            type: RequestType.GET_HATCHED_EGGS,
-            responseType: Responses.GetHatchedEggsResponse
-        });
-    };
-
-    this.encounterTutorialComplete = function(pokemonID) {
-        return self.callOrChain({
-            type: RequestType.ENCOUNTER_TUTORIAL_COMPLETE,
-            message: RequestMessages.EncounterTutorialCompleteMessage.fromObject({
-                pokemon_id: pokemonID
-            }),
-            responseType: Responses.EncounterTutorialCompleteResponse
-        });
-    };
-
-    this.levelUpRewards = function(level) {
-        return self.callOrChain({
-            type: RequestType.LEVEL_UP_REWARDS,
-            message: RequestMessages.LevelUpRewardsMessage.fromObject({
-                level: level
-            }),
-            responseType: Responses.LevelUpRewardsResponse
-        });
-    };
-
-    this.checkAwardedBadges = function() {
-        return self.callOrChain({
-            type: RequestType.CHECK_AWARDED_BADGES,
-            responseType: Responses.CheckAwardedBadgesResponse
-        });
-    };
-
-    this.useItemGym = function(itemID, gymID) {
-        return self.callOrChain({
-            type: RequestType.USE_ITEM_GYM,
-            message: RequestMessages.UseItemGymMessage.fromObject({
-                item_id: itemID,
-                gym_id: gymID,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.UseItemGymResponse
-        });
-    };
-
-    this.getGymDetails = function(gymID, gymLatitude, gymLongitude, clientVersion) {
-        return self.callOrChain({
-            type: RequestType.GET_GYM_DETAILS,
-            message: RequestMessages.GetGymDetailsMessage.fromObject({
-                gym_id: gymID,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude,
-                gym_latitude: gymLatitude,
-                gym_longitude: gymLongitude,
-                client_version: clientVersion
-            }),
-            responseType: Responses.GetGymDetailsResponse
-        });
-    };
-
-    this.recycleInventoryItem = function(itemID, count) {
-        return self.callOrChain({
-            type: RequestType.RECYCLE_INVENTORY_ITEM,
-            message: RequestMessages.RecycleInventoryItemMessage.fromObject({
-                item_id: itemID,
-                count: count
-            }),
-            responseType: Responses.RecycleInventoryItemResponse
-        });
-    };
-
-    this.collectDailyBonus = function() {
-        return self.callOrChain({
-            type: RequestType.COLLECT_DAILY_BONUS,
-            responseType: Responses.CollectDailyBonusResponse
-        });
-    };
-
-    this.useItemXPBoost = function(itemID) {
-        return self.callOrChain({
-            type: RequestType.USE_ITEM_XP_BOOST,
-            message: RequestMessages.UseItemXpBoostMessage.fromObject({
-                item_id: itemID
-            }),
-            responseType: Responses.UseItemXpBoostResponse
-        });
-    };
-
-    this.useItemEggIncubator = function(itemID, pokemonID) {
-        return self.callOrChain({
-            type: RequestType.USE_ITEM_EGG_INCUBATOR,
-            message: RequestMessages.UseItemEggIncubatorMessage.fromObject({
-                item_id: itemID,
-                pokemon_id: pokemonID
-            }),
-            responseType: Responses.UseItemEggIncubatorResponse
-        });
-    };
-
-    this.useIncense = function(itemID) {
-        return self.callOrChain({
-            type: RequestType.USE_INCENSE,
-            message: RequestMessages.UseIncenseMessage.fromObject({
-                incense_type: itemID
-            }),
-            responseType: Responses.UseIncenseResponse
-        });
-    };
-
-    this.getIncensePokemon = function() {
-        return self.callOrChain({
-            type: RequestType.GET_INCENSE_POKEMON,
-            message: RequestMessages.GetIncensePokemonMessage.fromObject({
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.GetIncensePokmeonResponse
-        });
-    };
-
-    this.incenseEncounter = function(encounterID, encounterLocation) {
-        return self.callOrChain({
-            type: RequestType.INCENSE_ENCOUNTER,
-            message: RequestMessages.IncenseEncounterMessage.fromObject({
-                encounter_id: encounterID,
-                encounter_location: encounterLocation
-            }),
-            responseType: Responses.IncenseEncounterResponse
-        });
-    };
-
-    this.addFortModifier = function(modifierItemID, fortID) {
-        return self.callOrChain({
-            type: RequestType.ADD_FORT_MODIFIER,
-            message: RequestMessages.AddFortModifierMessage.fromObject({
-                modifier_type: modifierItemID,
-                fort_id: fortID,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.AddFortModifierResponse
-        });
-    };
-
-    this.diskEncounter = function(encounterID, fortID) {
-        return self.callOrChain({
-            type: RequestType.DISK_ENCOUNTER,
-            message: RequestMessages.DiskEncounterMessage.fromObject({
-                encounter_id: encounterID,
-                fort_id: fortID,
-                player_latitude: self.playerLatitude,
-                player_longitude: self.playerLongitude
-            }),
-            responseType: Responses.DiskEncounterResponse
-        });
-    };
-
-    this.collectDailyDefenderBonus = function() {
-        return self.callOrChain({
-            type: RequestType.COLLECT_DAILY_DEFENDER_BONUS,
-            responseType: Responses.CollectDailyDefenderBonusResponse
-        });
-    };
-
-    this.upgradePokemon = function(pokemonID) {
-        return self.callOrChain({
-            type: RequestType.UPGRADE_POKEMON,
-            message: RequestMessages.UpgradePokemonMessage.fromObject({
-                pokemon_id: pokemonID
-            }),
-            responseType: Responses.UpgradePokemonResponse
-        });
-    };
-
-    this.setFavoritePokemon = function(pokemonID, isFavorite) {
-        return self.callOrChain({
-            type: RequestType.SET_FAVORITE_POKEMON,
-            message: RequestMessages.SetFavoritePokemonMessage.fromObject({
-                pokemon_id: pokemonID,
-                is_favorite: isFavorite
-            }),
-            responseType: Responses.SetFavoritePokemonResponse
-        });
-    };
-
-    this.nicknamePokemon = function(pokemonID, nickname) {
-        return self.callOrChain({
-            type: RequestType.NICKNAME_POKEMON,
-            message: RequestMessages.NicknamePokemonMessage.fromObject({
-                pokemon_id: pokemonID,
-                nickname: nickname
-            }),
-            responseType: Responses.NicknamePokemonResponse
-        });
-    };
-
-    this.equipBadge = function(badgeType) {
-        return self.callOrChain({
-            type: RequestType.EQUIP_BADGE,
-            message: RequestMessages.EquipBadgeMessage.fromObject({
-                badge_type: badgeType
-            }),
-            responseType: Responses.EquipBadgeResponse
-        });
-    };
-
-    this.setContactSettings = function(sendMarketingEmails, sendPushNotifications) {
-        return self.callOrChain({
-            type: RequestType.SET_CONTACT_SETTINGS,
-            message: RequestMessages.SetContactSettingsMessage.fromObject({
-                contact_settings: {
-                    send_marketing_emails: sendMarketingEmails,
-                    send_push_notifications: sendPushNotifications
-                }
-            }),
-            responseType: Responses.SetContactSettingsResponse
-        });
-    };
-
-    this.setBuddyPokemon = function(pokemonID) {
-        return self.callOrChain({
-            type: RequestType.SET_BUDDY_POKEMON,
-            message: RequestMessages.SetBuddyPokemonMessage.fromObject({
-                pokemon_id: pokemonID
-            }),
-            responseType: Responses.SetBuddyPokemonResponse
-        });
-    };
-
-    this.getBuddyWalked = function() {
-        return self.callOrChain({
-            type: RequestType.GET_BUDDY_WALKED,
-            responseType: Responses.GetBuddyWalkedResponse
-        });
-    };
-
-    this.useItemEncounter = function(itemID, encounterID, spawnPointGUID) {
-        return self.callOrChain({
-            type: RequestType.USE_ITEM_ENCOUNTER,
-            message: RequestMessages.UseItemEncounterMessage.fromObject({
-                item: itemID,
-                encounter_id: encounterID,
-                spawn_point_guid: spawnPointGUID
-            }),
-            responseType: Responses.UseItemEncounterResponse
-        });
-    };
-
-    this.gymGetInfo = function(gymId, gymLat, gymLng) {
-        return self.callOrChain({
-            type: RequestType.GYM_GET_INFO,
-            message: RequestMessages.GymGetInfoMessage.fromObject({
-                gym_id: gymId,
-                player_lat_degrees: self.playerLatitude,
-                player_lng_degrees: self.playerLatitude,
-                gym_lat_degrees: gymLat,
-                gym_lng_degrees: gymLng,
-            }),
-            responseType: Responses.GymGetInfoResponse
-        });
-    };
-
-    this.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion,
-                                    paginate, pageOffset, pageTimestamp) {
-        return self.callOrChain({
-            type: RequestType.GET_ASSET_DIGEST,
-            message: RequestMessages.GetAssetDigestMessage.fromObject({
-                platform: platform,
-                device_manufacturer: deviceManufacturer,
-                device_model: deviceModel,
-                locale: locale,
-                app_version: appVersion,
-                paginate: paginate,
-                page_offset: pageOffset,
-                page_timestamp: pageTimestamp,
-            }),
-            responseType: Responses.GetAssetDigestResponse
-        });
-    };
-
-    this.getDownloadURLs = function(assetIDs) {
-        return self.callOrChain({
-            type: RequestType.GET_DOWNLOAD_URLS,
-            message: RequestMessages.GetDownloadUrlsMessage.fromObject({
-                asset_id: assetIDs
-            }),
-            responseType: Responses.GetDownloadUrlsResponse
-        });
-    };
-
-    this.claimCodename = function(codename, force) {
-        return self.callOrChain({
-            type: RequestType.CLAIM_CODENAME,
-            message: RequestMessages.ClaimCodenameMessage.fromObject({
-                codename: codename,
-                force: force,
-            }),
-            responseType: Responses.ClaimCodenameResponse
-        });
-    };
-
-    this.setAvatar = function(playerAvatar) {
-        return self.callOrChain({
-            type: RequestType.SET_AVATAR,
-            message: RequestMessages.SetAvatarMessage.fromObject({
-                player_avatar: playerAvatar
-            }),
-            responseType: Responses.SetAvatarResponse
-        });
-    };
-
-    this.setPlayerTeam = function(teamColor) {
-        return self.callOrChain({
-            type: RequestType.SET_PLAYER_TEAM,
-            message: RequestMessages.SetPlayerTeamMessage.fromObject({
-                team: teamColor
-            }),
-            responseType: Responses.SetPlayerTeamResponse
-        });
-    };
-
-    this.markTutorialComplete = function(tutorialsCompleted, sendMarketingEmails, sendPushNotifications) {
-        if (!Array.isArray(tutorialsCompleted)) tutorialsCompleted = [tutorialsCompleted];
-        return self.callOrChain({
-            type: RequestType.MARK_TUTORIAL_COMPLETE,
-            message: RequestMessages.MarkTutorialCompleteMessage.fromObject({
-                tutorials_completed: tutorialsCompleted,
-                send_marketing_emails: sendMarketingEmails,
-                send_push_notifications: sendPushNotifications
-            }),
-            responseType: Responses.MarkTutorialCompleteResponse
-        });
-    };
-
-    this.checkChallenge = function(isDebugRequest) {
-        return self.callOrChain({
-            type: RequestType.CHECK_CHALLENGE,
-            message: RequestMessages.CheckChallengeMessage.fromObject({
-                debug_request: isDebugRequest
-            }),
-            responseType: Responses.CheckChallengeResponse
-        });
-    };
-
-    this.verifyChallenge = function(token) {
-        return self.callOrChain({
-            type: RequestType.VERIFY_CHALLENGE,
-            message: RequestMessages.VerifyChallengeMessage.fromObject({
-                token: token
-            }),
-            responseType: Responses.VerifyChallengeResponse
-        });
-    };
-
-    this.echo = function() {
-        return self.callOrChain({
-            type: RequestType.ECHO,
-            responseType: Responses.EchoResponse
-        });
-    };
-
-    this.sfidaActionLog = function() {
-        return self.callOrChain({
-            type: RequestType.SFIDA_ACTION_LOG,
-            responseType: Responses.SfidaActionLogResponse
-        });
-    };
-
-    this.listAvatarCustomizations = function(avatarType, slots, filters, start, limit) {
-        return self.callOrChain({
-            type: RequestType.LIST_AVATAR_CUSTOMIZATIONS,
-            message: RequestMessages.ListAvatarCustomizationsMessage.fromObject({
-                avatar_type: avatarType,
-                slot: slots,
-                filters: filters,
-                start: start,
-                limit: limit
-            }),
-            responseType: Responses.ListAvatarCustomizationsResponse
-        });
-    };
-
-    this.setAvatarItemAsViewed = function(avatarTemplateIDs) {
-        return self.callOrChain({
-            type: RequestType.SET_AVATAR_ITEM_AS_VIEWED,
-            message: RequestMessages.SetAvatarItemAsViewedMessage.fromObject({
-                avatar_template_id: avatarTemplateIDs
-            }),
-            responseType: Responses.SetAvatarItemAsViewdResponse
-        });
-    };
-
-    this.getInbox = function(isHistory, isReverse, notBefore) {
-        return self.callOrChain({
-            type: RequestType.GET_INBOX,
-            message: RequestMessages.GetInboxMessage.fromObject({
-                is_history: isHistory,
-                is_reverse: isReverse,
-                not_before_ms: notBefore,
-            }),
-            responseType: Responses.GetInboxResponse
-        });
-    };
-
-    this.updateNotificationStatus = function(notificationIds, createTimestampMs, state) {
-        return self.callOrChain({
-            type: RequestType.UPDATE_NOTIFICATION_STATUS,
-            message: RequestMessages.UpdateNotificationMessage.fromObject({
-                notification_ids: notificationIds,
-                create_timestamp_ms: createTimestampMs,
-                state: state,
-            }),
-            responseType: Responses.UpdateNotificationResponse
-        });
-    };
-
-    this.listGymBadges = function() {
-        return self.callOrChain({
-            type: RequestType.LIST_GYM_BADGES,
-            responseType: Responses.ListGymBadgesResponse
-        });
-    };
-
-    this.getGymBadgeDetails = function(fortId, latitude, longitude) {
-        return self.callOrChain({
-            type: RequestType.GET_GYM_BADGE_DETAILS,
-            message: RequestMessages.GetGymBadgeDetailsMessage.fromObject({
-                fort_id: fortId,
-                latitude: latitude,
-                longitude: longitude,
-            }),
-            responseType: Responses.GetGymBadgeDetailsResponse
-        });
-    };
-
-    /*
-     * Platform Client Actions
-     */
-    this.optOutPushNotificationCategory = function(categories) {
-        if (!Array.isArray(categories)) categories = [categories];
-        return self.callOrChain({
-            type: RequestType.OPT_OUT_PUSH_NOTIFICATION_CATEGORY,
-            message: RequestMessages.OptOutPushNotificationCategoryMessage.fromObject({
-                categories: categories,
-            }),
-            responseType: Responses.OptOutPushNotificationCategoryResponse
-        });
-    };
-
-    this.registerPushNotification = function(apnToken, gcmToken) {
-        return self.callOrChain({
-            type: RequestType.REGISTER_PUSH_NOTIFICATION,
-            message: RequestMessages.RegisterPushNotificationMessage.fromObject({
-                apn_token: apnToken,
-                gcm_token: gcmToken,
-            }),
-            responseType: Responses.RegisterPushNotificationResponse
-        });
-    };
-
-    /*
-     * Advanced user only
-     */
-    this.batchAddPlatformRequest = function(type, message) {
-        if (!self.batchPftmRequests) self.batchPftmRequests = [];
-        self.batchPftmRequests.push({
-            type: type,
-            message: message,
-        });
-    };
+    ApiCalls.defineApiCalls(this);
 
     /*
      * INTERNAL STUFF
      */
 
     this.request = request.defaults({
+        encoding: null,
+        gzip: true,
         headers: {
             'User-Agent': 'Niantic App',
-            'Accept': '*/*',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept-Language': 'en-us',
+            'Content-Type': 'application/binary',
+            'Accept-Encoding': 'identity, gzip',
         },
-        gzip: true,
-        encoding: null,
     });
     Promise.promisifyAll(this.request);
 
@@ -986,19 +278,6 @@ function Client(options) {
      * @return {Long}
      */
     this.getRequestID = function() {
-        // dirty fix to mimic the real app
-        if (self.rpcId === 2) {
-            self.rpcId++;
-            self.rpcIdHigh = 0x41a70;
-            return Long.fromString('0x10d63af100000003', true, 16);
-        } else if (self.rpcId === 3) {
-            self.rpcId++;
-            self.rpcIdHigh = 0x10d63af1;
-            return Long.fromString('0x41a700000002', true, 16);
-        } else if (self.rpcId === 6) {
-            self.rpcId++;
-            self.rpcIdHigh = (Math.pow(7, 5) * self.rpcIdHigh) % (Math.pow(2, 31) - 1);
-        }
         self.rpcIdHigh = (Math.pow(7, 5) * self.rpcIdHigh) % (Math.pow(2, 31) - 1);
         return new Long(self.rpcId++, self.rpcIdHigh, true);
     };
@@ -1087,7 +366,6 @@ function Client(options) {
                 request_message: encoded,
             })
         );
-
         return envelope;
     };
 
@@ -1175,19 +453,19 @@ function Client(options) {
         self.signatureEncryption.setLocation(envelope.latitude, envelope.longitude, envelope.accuracy);
 
         return retry(() => self.signatureEncryption.encryptAsync(envelope.requests)
-                        .catch(err => {
-                            if (err.name === 'HashServerError' && err.retry) {
-                                throw err;
-                            } else {
-                                throw new retry.StopError(err);
-                            }
-                        }),
-            {
-                interval: 1000,
-                backoff: 2,
-                max_tries: 5,
-                args: envelope.requests,
-            })
+            .catch(err => {
+                if (err.name === 'HashServerError' && err.retry) {
+                    throw err;
+                } else {
+                    throw new retry.StopError(err);
+                }
+            }),
+        {
+            interval: 1000,
+            backoff: 2,
+            max_tries: 5,
+            args: envelope.requests,
+        })
             .then(sigEncrypted => {
                 // remove existing signature if any
                 envelope.platform_requests = envelope.platform_requests
@@ -1256,7 +534,7 @@ function Client(options) {
                     proxy: self.options.proxy,
                     body: encode(signedEnvelope),
                 })
-                .then(response => ({ signedEnvelope: signedEnvelope, response: response }))
+                    .then(response => ({ signedEnvelope: signedEnvelope, response: response }))
             )
             .then(result => {
                 const signedEnvelope = result.signedEnvelope;
@@ -1309,14 +587,14 @@ function Client(options) {
                 if (responseEnvelope.status_code === 102 && self.login) {
                     self.login.reset();
                     return self.login
-                                .login(self.options.username, self.options.password)
-                                .then(token => {
-                                    self.options.authToken = token;
-                                    self.authTicket = null;
-                                    signedEnvelope.auth_ticket = null;
-                                    signedEnvelope.auth_info = this.getAuthInfoObject();
-                                    return self.callRPC(requests, signedEnvelope);
-                                });
+                        .login(self.options.username, self.options.password)
+                        .then(token => {
+                            self.options.authToken = token;
+                            self.authTicket = null;
+                            signedEnvelope.auth_ticket = null;
+                            signedEnvelope.auth_info = this.getAuthInfoObject();
+                            return self.callRPC(requests, signedEnvelope);
+                        });
                 }
 
                 /* Throttling, retry same request later */
@@ -1371,8 +649,8 @@ function Client(options) {
                     responseEnvelope.platform_returns.forEach(platformReturn => {
                         if (platformReturn.type === PlatformRequestType.GET_STORE_ITEMS) {
                             const store = PlatformResponses.GetStoreItemsResponse.decode(platformReturn.response);
-                            store._requestType = -1,
-                            store._ptfmRequestType = PlatformRequestType.GET_STORE_ITEMS,
+                            store._requestType = -1;
+                            store._ptfmRequestType = PlatformRequestType.GET_STORE_ITEMS;
                             responses.push(store);
                         }
                     });
@@ -1402,68 +680,15 @@ function Client(options) {
         }
 
         if (self.options.hashingVersion != null) {
-             self.hashingVersion = self.options.hashingVersion;
+            self.hashingVersion = self.options.hashingVersion;
+            return Promise.resolve();
         } else {
-            let version = self.options.version;
-            // hack because bossland doesn't want to update their endpoint...
-            if (+version === 6702) version = 6701;
+            const version = self.options.version;
             return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
-                    .then(version => {
-                        self.hashingVersion = version;
-                    });
+                .then(hashVersion => {
+                    self.hashingVersion = hashVersion;
+                });
         }
-    };
-
-    /*
-     * DEPRECATED METHODS
-     */
-
-    /**
-     * Sets the authType and authToken options.
-     * @deprecated Use options object or setOption() instead
-     * @param {string} authType
-     * @param {string} authToken
-     */
-    this.setAuthInfo = function(authType, authToken) {
-        self.setOption('authType', authType);
-        self.setOption('authToken', authToken);
-    };
-
-    /**
-     * Sets the includeRequestTypeInResponse option.
-     * @deprecated Use options object or setOption() instead
-     * @param {bool} includeRequestTypeInResponse
-     */
-    this.setIncludeRequestTypeInResponse = function(includeRequestTypeInResponse) {
-        self.setOption('includeRequestTypeInResponse', includeRequestTypeInResponse);
-    };
-
-    /**
-     * Sets the maxTries option.
-     * @deprecated Use options object or setOption() instead
-     * @param {integer} maxTries
-     */
-    this.setMaxTries = function(maxTries) {
-        self.setOption('maxTries', maxTries);
-    };
-
-    /**
-     * Sets the proxy option.
-     * @deprecated Use options object or setOption() instead
-     * @param {string} proxy
-     */
-    this.setProxy = function(proxy) {
-        self.setOption('proxy', proxy);
-    };
-
-    /**
-     * Sets the automaticLongConversion option.
-     * @deprecated Use options object or setOption() instead
-     * @param {boolean} enable
-     */
-    this.setAutomaticLongConversionEnabled = function(enable) {
-        if (typeof enable !== 'boolean') return;
-        self.setOption('automaticLongConversion', enable);
     };
 }
 

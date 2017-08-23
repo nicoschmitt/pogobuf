@@ -1,8 +1,6 @@
 /* eslint no-underscore-dangle: ["error", { "allow": ["_eventId"] }] */
-'use strict';
-
-const request = require('request'),
-    Promise = require('bluebird');
+const request = require('request');
+const Promise = require('bluebird');
 
 /**
  * Pokémon Trainer Club login client.

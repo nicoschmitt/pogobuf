@@ -1,6 +1,12 @@
-# In progress
+# 2.4.x
+* Code clean up and refactor (api definition in a separate file) (2.4.0)
+* `addPlatformRequestToEnvelope` does not break chain anymore (2.4.0)
+* Fix http headers on rpc requests (2.4.0)
+* Cleanup restart requestid sequence (2.4.0)
 
 # 2.3.x
+* Bug in getGetInfo data sent (2.3.8)
+* Fix request ID generation (2.3.7)
 * Fix typings (2.3.5)
 * Fix an issue when resending request including more than one signature (2.3.5)
 * Option `hashingVersion` allows you to bypass hash version auto detect mecanism (2.3.5)
