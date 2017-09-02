@@ -1,5 +1,3 @@
-'use strict';
-
 /*
     This example script shows how to work with the getInventory() API call and the
     splitInventory() function.
@@ -16,9 +14,9 @@ const pos = {
 };
 
 async function Main() {
-    let client = new pogobuf.Client({
+    const client = new pogobuf.Client({
         authType: 'google',
-        username: 'your-username@gmail.com', 
+        username: 'your-username@gmail.com',
         password: 'your-google-password',
         hashingKey: 'hash key',
         useHashingServer: true,
@@ -29,16 +27,16 @@ async function Main() {
     await client.init();
     await client.batchStart().batchCall();
     await client.getPlayer('US', 'en', 'Europe/Paris');
-    let response = await client.batchStart()
-                               .downloadRemoteConfigVersion(POGOProtos.Enums.Platform.IOS, '', '', '', 6301)
-                               .checkChallenge()
-                               .getHatchedEggs()
-                               .getInventory()
-                               .checkAwardedBadges()
-                               .downloadSettings()
-                               .batchCall();
+    const response = await client.batchStart()
+        .downloadRemoteConfigVersion(POGOProtos.Enums.Platform.IOS, '', '', '', 6301)
+        .checkChallenge()
+        .getHatchedEggs()
+        .getInventory()
+        .checkAwardedBadges()
+        .downloadSettings()
+        .batchCall();
 
-    let inventory = pogobuf.Utils.splitInventory(response[3]);
+    const inventory = pogobuf.Utils.splitInventory(response[3]);
     console.log('Items:');
     inventory.items.forEach(item => {
         const name = pogobuf.Utils.getEnumKeyByValue(POGOProtos.Inventory.Item.ItemId, item.item_id);
@@ -49,5 +47,5 @@ async function Main() {
 }
 
 Main()
-.then(() => console.log('Done.'))
-.catch(e => console.error(e));
+    .then(() => console.log('Done.'))
+    .catch(e => console.error(e));
