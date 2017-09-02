@@ -27,7 +27,6 @@ async function Main() {
         useHashingServer: true,
         hashingKey: 'your hashing key',
         version: 6901,
-        includeRequestTypeInResponse: true,
     });
 
     // set player position
