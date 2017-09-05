@@ -24,22 +24,22 @@ const _ = require('lodash');
 const RequestType = POGOProtos.Networking.Requests.RequestType;
 
 async function Main() {
-    let location = await nodeGeocoder().geocode('Invalides, Paris');
+    const location = await nodeGeocoder().geocode('Invalides, Paris');
     if (!location.length) throw new Error('Location not found.');
 
-    var coords = { 
-        latitude: location[0].latitude, 
+    var coords = {
+        latitude: location[0].latitude,
         longitude: location[0].longitude,
         altitude: _.random(0, 20, true),
     };
 
-    let client = new pogobuf.Client({
+    const client = new pogobuf.Client({
         authType: 'ptc',
-        username: 'ptc user name', 
+        username: 'ptc user name',
         password: 'ptc password',
         useHashingServer: true,
         hashingKey: 'your hashing key',
-        version: 6701,
+        version: 6901,
         includeRequestTypeInResponse: true,
     });
 
@@ -57,13 +57,13 @@ async function Main() {
 
     // get settings, inventory, etc...
     let response = await client.batchStart()
-                               .downloadRemoteConfigVersion(POGOProtos.Enums.Platform.IOS, '', '', '', 6701)
-                               .checkChallenge()
-                               .getHatchedEggs()
-                               .getInventory()
-                               .checkAwardedBadges()
-                               .downloadSettings()
-                               .batchCall();
+        .downloadRemoteConfigVersion(POGOProtos.Enums.Platform.IOS, '', '', '', 6701)
+        .checkChallenge()
+        .getHatchedEggs()
+        .getInventory()
+        .checkAwardedBadges()
+        .downloadSettings()
+        .batchCall();
 
     // get data returned by the server that it expect in following calls
     const inventoryResponse = _.find(response, resp => resp._requestType === RequestType.GET_INVENTORY);
@@ -73,41 +73,41 @@ async function Main() {
 
     // call getPlayerProfile with data got before
     response = await client.batchStart()
-                           .getPlayerProfile()
-                           .checkChallenge()
-                           .getHatchedEggs()
-                           .getInventory(inventory)
-                           .checkAwardedBadges()
-                           .downloadSettings(settings)
-                           .getBuddyWalked()
-                           .batchCall();
+        .getPlayerProfile()
+        .checkChallenge()
+        .getHatchedEggs()
+        .getInventory(inventory)
+        .checkAwardedBadges()
+        .downloadSettings(settings)
+        .getBuddyWalked()
+        .batchCall();
 
     // same for levelUpRewards
     response = await client.batchStart()
-                           .levelUpRewards(level)
-                           .checkChallenge()
-                           .getHatchedEggs()
-                           .getInventory(inventory)
-                           .checkAwardedBadges()
-                           .downloadSettings(settings)
-                           .getBuddyWalked()
-                           .getInbox(true, false, 0)
-                           .batchCall();
+        .levelUpRewards(level)
+        .checkChallenge()
+        .getHatchedEggs()
+        .getInventory(inventory)
+        .checkAwardedBadges()
+        .downloadSettings(settings)
+        .getBuddyWalked()
+        .getInbox(true, false, 0)
+        .batchCall();
 
     // then call a getMapObjects
     const cellIDs = pogobuf.Utils.getCellIDs(coords.latitude, coords.longitude);
     response = await client.batchStart()
-                           .getMapObjects(cellIDs, Array(cellIDs.length).fill(0))
-                           .checkChallenge()
-                           .getHatchedEggs()
-                           .getInventory(inventory)
-                           .checkAwardedBadges()
-                           .getBuddyWalked()
-                           .getInbox(true, false, 0)
-                           .batchCall();
+        .getMapObjects(cellIDs, Array(cellIDs.length).fill(0))
+        .checkChallenge()
+        .getHatchedEggs()
+        .getInventory(inventory)
+        .checkAwardedBadges()
+        .getBuddyWalked()
+        .getInbox(true, false, 0)
+        .batchCall();
 
-    let forts = response[0].map_cells.reduce((all, c) => all.concat(c.forts), []);
-    let pokestops = forts.filter(f => f.type === 1);
+    const forts = response[0].map_cells.reduce((all, c) => all.concat(c.forts), []);
+    const pokestops = forts.filter(f => f.type === 1);
     let gyms = forts.filter(f => f.type === 0);
 
     console.log(`Found ${pokestops.length} pokestops.`);
