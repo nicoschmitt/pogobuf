@@ -28,7 +28,7 @@ const defaultOptions = {
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 6901,
+    version: 7301,
     useHashingServer: true,
     hashingServer: 'http://pokehash.buddyauth.com/',
     hashingVersion: null,
