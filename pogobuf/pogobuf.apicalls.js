@@ -20,11 +20,11 @@ module.exports.defineApiCalls = function(self) {
 
     self.getInventory = function(lastTimestamp) {
         return self.callOrChain({
-            type: RequestType.GET_INVENTORY,
-            message: RequestMessages.GetInventoryMessage.fromObject({
+            type: RequestType.GET_HOLO_INVENTORY,
+            message: RequestMessages.GetHoloInventoryMessage.fromObject({
                 last_timestamp_ms: lastTimestamp
             }),
-            responseType: Responses.GetInventoryResponse
+            responseType: Responses.GetHoloInventoryResponse
         });
     };
 
