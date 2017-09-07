@@ -1,3 +1,6 @@
+# 2.5.x
+* 0.73.1 compatibility (be sure dependencies are up to date) (2.5.0)
+
 # 2.4.x
 * Code clean up and refactor (api definition in a separate file) (2.4.0)
 * `addPlatformRequestToEnvelope` does not break chain anymore (2.4.0)
