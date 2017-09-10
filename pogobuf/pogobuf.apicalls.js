@@ -171,8 +171,8 @@ module.exports.defineApiCalls = function(self) {
     };
 
     self.releasePokemon = function(pokemonIDs) {
-        if (!Array.isArray(pokemonIDs)) pokemonIDs = [pokemonIDs];
-
+        if (!pokemonIDs) pokemonIDs = [];
+        else if (!Array.isArray(pokemonIDs)) pokemonIDs = [pokemonIDs];
         return self.callOrChain({
             type: RequestType.RELEASE_POKEMON,
             message: RequestMessages.ReleasePokemonMessage.fromObject({
@@ -503,7 +503,8 @@ module.exports.defineApiCalls = function(self) {
     };
 
     self.getRaidDetails = function(raidSeed, gymId, lobbyIds) {
-        if (!Array.isArray(lobbyIds)) lobbyIds = [lobbyIds];
+        if (!lobbyIds) lobbyIds = [];
+        else if (!Array.isArray(lobbyIds)) lobbyIds = [lobbyIds];
         return self.callOrChain({
             type: RequestType.GET_RAID_DETAILS,
             message: RequestMessages.GetRaidDetailsMessage.fromObject({
@@ -694,7 +695,8 @@ module.exports.defineApiCalls = function(self) {
      * Platform Client Actions
      */
     self.optOutPushNotificationCategory = function(categories) {
-        if (!Array.isArray(categories)) categories = [categories];
+        if (!categories) categories = [];
+        else if (!Array.isArray(categories)) categories = [categories];
         return self.callOrChain({
             type: RequestType.OPT_OUT_PUSH_NOTIFICATION_CATEGORY,
             message: RequestMessages.OptOutPushNotificationCategoryMessage.fromObject({
