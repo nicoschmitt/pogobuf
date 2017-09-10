@@ -168,6 +168,12 @@ declare namespace pogobuf {
             fortLongitude: number
         ): pogobuf.Client;
 
+        getRaidDetails(
+            raidSeed: string | number | Long, 
+            gymId: string,
+            lobbyIds: string[] | number[] | Long[]
+        ): pogobuf.Client;
+
         getAssetDigest(
             platform: POGOProtos.Enums.Platform,
             deviceManufacturer: string,

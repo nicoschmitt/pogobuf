@@ -1,5 +1,6 @@
 # 2.5.x
 * 0.73.1 compatibility (be sure dependencies are up to date) (2.5.0)
+* Bug fix (2.5.1)
 
 # 2.4.x
 * Code clean up and refactor (api definition in a separate file) (2.4.0)
