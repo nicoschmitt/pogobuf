@@ -683,7 +683,8 @@ function Client(options) {
             self.hashingVersion = self.options.hashingVersion;
             return Promise.resolve();
         } else {
-            const version = self.options.version;
+            const version = +self.options.version;
+            if (version === 7501) version = 7500;
             return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
                 .then(hashVersion => {
                     self.hashingVersion = hashVersion;
