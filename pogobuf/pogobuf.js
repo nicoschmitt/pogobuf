@@ -1,10 +1,8 @@
-'use strict';
-
 /**
  * Pogobuf Pokemón Go Client Library.
  * @module pogobuf
  * @namespace
- * @see {@link https://github.com/cyraxx/pogobuf|GitHub repository}
+ * @see {@link https://github.com/pogosandbox/pogobuf|GitHub repository}
  */
 module.exports = {
     /* eslint-disable global-require */

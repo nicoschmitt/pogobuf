@@ -105,13 +105,13 @@ declare namespace pogobuf {
         diskEncounter(
             encounterID: string | number | Long,
             fortID: string
-        ): Promise<POGOProtos.Networking.Responses.DiskEncounterResponse>;
+        ): pogobuf.Client;;
 
         downloadItemTemplates(
             paginate: boolean,
             pageOffset?: number,
             pageTimestamp?: Long
-        ): Promise<POGOProtos.Networking.Responses.DownloadItemTemplatesResponse>;
+        ): pogobuf.Client;;
 
         downloadRemoteConfigVersion(
             platform: POGOProtos.Enums.Platform,
@@ -119,11 +119,11 @@ declare namespace pogobuf {
             deviceModel: string,
             locale: string,
             appVersion: number
-        ): Promise<POGOProtos.Networking.Responses.DownloadRemoteConfigVersionResponse>;
+        ): pogobuf.Client;;
 
         downloadSettings(
             hash?: string
-        ): Promise<POGOProtos.Networking.Responses.DownloadSettingsResponse>;
+        ): pogobuf.Client;;
 
         echo(
         ): Promise<POGOProtos.Networking.Responses.EchoResponse>;
@@ -131,11 +131,11 @@ declare namespace pogobuf {
         encounter(
             encounterID: string | number | Long,
             spawnPointID: string
-        ): Promise<POGOProtos.Networking.Responses.EncounterResponse>;
+        ): pogobuf.Client;
 
         encounterTutorialComplete(
             pokemonID: POGOProtos.Enums.PokemonId
-        ): Promise<POGOProtos.Networking.Responses.EncounterTutorialCompleteResponse>;
+        ): pogobuf.Client;
 
         equipBadge(
             badgeType: POGOProtos.Enums.BadgeType
