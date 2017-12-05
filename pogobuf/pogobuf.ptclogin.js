@@ -49,9 +49,21 @@ function PTCLogin() {
      * @return {Promise}
      */
     this.login = function(username, password) {
-        return self.init()
+        return self.logout()
+            .then(() => self.init())
             .then(data => self.auth(data, username, password))
-            .then(data => self.getAccessToken(data));
+            .then(data => self.getAccessToken(data))
+            .then(token => self.getProfile(token));
+    };
+
+    this.logout = function() {
+        return self.request.getAsync({
+            url: 'https://sso.pokemon.com/sso/logout',
+            qs: {
+                service: 'https://sso.pokemon.com/sso/oauth2.0/callbackAuthorize',
+            },
+            proxy: self.proxy,
+        });
     };
 
     this.init = function() {
@@ -137,6 +149,23 @@ function PTCLogin() {
             const resp = querystring.parse(response.body);
             return resp.access_token;
         });
+    };
+
+    /**
+     * Get user profile. We don't really care about the result, but the app does it.
+     * @param {string} token
+     * @return {string} login token
+     */
+    this.getProfile = function(token) {
+        return self.request.postAsync({
+            url: 'https://sso.pokemon.com/sso/oauth2.0/profil',
+            form: {
+                access_token: token,
+                client_id: 'mobile-app_pokemon-go',
+                locale: 'en_US',
+            },
+            proxy: self.proxy,
+        }).then(() => token);
     };
 
     /**
