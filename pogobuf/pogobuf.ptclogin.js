@@ -24,7 +24,7 @@ function PTCLogin() {
         self.request = request.defaults({
             headers: {
                 'Accept': '*/*',
-                'User-Agent': 'pokemongo/1 CFNetwork/811.4.18 Darwin/16.5.0',
+                'User-Agent': 'pokemongo/0 CFNetwork/811.5.4 Darwin/16.7.0',
                 'Accept-Language': 'en-us',
                 'Accept-Encoding': 'gzip, deflate',
                 'X-Unity-Version': '2017.1.2f1',
@@ -65,26 +65,24 @@ function PTCLogin() {
             },
             proxy: self.proxy,
         })
-        .then(response => {
-            const body = response.body;
+            .then(response => {
+                if (response.statusCode !== 200) {
+                    throw new Error(`Status ${response.statusCode} received from PTC login`);
+                }
 
-            if (response.statusCode !== 200) {
-                throw new Error(`Status ${response.statusCode} received from PTC login`);
-            }
+                let sessionResponse = null;
+                try {
+                    sessionResponse = JSON.parse(response.body);
+                } catch (e) {
+                    throw new Error('Unexpected response received from PTC login (invalid json)');
+                }
 
-            var sessionResponse = null;
-            try {
-                sessionResponse = JSON.parse(body);
-            } catch (e) {
-                throw new Error('Unexpected response received from PTC login (invalid json)');
-            }
+                if (!sessionResponse || !sessionResponse.lt && !sessionResponse.execution) {
+                    throw new Error('No session data received from PTC login');
+                }
 
-            if (!sessionResponse || !sessionResponse.lt && !sessionResponse.execution) {
-                throw new Error('No session data received from PTC login');
-            }
-
-            return sessionResponse;
-        });
+                return sessionResponse;
+            });
     };
 
     /**
@@ -110,27 +108,27 @@ function PTCLogin() {
             form: sessionData,
             proxy: self.proxy,
         })
-        .then(response => {
-            if (response.headers['set-cookie'] && response.headers['set-cookie'].length > 0) {
-                var cookieString = response.headers['set-cookie'].filter(c => c.startsWith('CASTGC'));
-                if (cookieString && cookieString.length > 0) {
-                    const cookie = request.cookie(cookieString[0]);
-                    return cookie.value;
+            .then(response => {
+                if (response.headers['set-cookie'] && response.headers['set-cookie'].length > 0) {
+                    var cookieString = response.headers['set-cookie'].filter(c => c.startsWith('CASTGC'));
+                    if (cookieString && cookieString.length > 0) {
+                        const cookie = request.cookie(cookieString[0]);
+                        return cookie.value;
+                    }
                 }
-            }
 
-            // something went wrong
-            if (response.body) {
-                if (response.body.indexOf('password is incorrect') >= 0) {
-                    throw new Error('Invalid PTC login or password.');
-                } if (response.body.indexOf('failed to log in correctly too many times') >= 0) {
-                    throw new Error('Account temporarily disabled, please check your password.');
+                // something went wrong
+                if (response.body) {
+                    if (response.body.indexOf('password is incorrect') >= 0) {
+                        throw new Error('Invalid PTC login or password.');
+                    } if (response.body.indexOf('failed to log in correctly too many times') >= 0) {
+                        throw new Error('Account temporarily disabled, please check your password.');
+                    }
                 }
-            }
 
-            // don't know what happend
-            throw new Error('Something went wrong during PTC login.');
-        });
+                // don't know what happend
+                throw new Error('Something went wrong during PTC login.');
+            });
     };
 
     /**
