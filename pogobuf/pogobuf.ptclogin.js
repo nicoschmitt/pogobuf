@@ -1,6 +1,9 @@
 /* eslint no-underscore-dangle: ["error", { "allow": ["_eventId"] }] */
 const request = require('request');
 const Promise = require('bluebird');
+const querystring = require('querystring');
+
+const PTC_CLIENT_SECRET = 'w8ScCUXJQc6kXKw8FiOhd8Fixzht18Dq3PEVkUCP5ZPxtgyWsbTvWHFLm2wNY0JR';
 
 /**
  * Pokémon Trainer Club login client.
@@ -45,8 +48,11 @@ function PTCLogin() {
      * @return {Promise}
      */
     this.login = function(username, password) {
-        return self.getSession()
-            .then(sessionData => self.getTicket(sessionData, username, password));
+        // return self.getSession()
+        //     .then(sessionData => self.getTicket(sessionData, username, password));
+        return self.init()
+            .then(data => self.auth(data, username, password))
+            .then(data => self.getAccessToken(data));
     };
 
     /**
@@ -129,6 +135,90 @@ function PTCLogin() {
                 // don't know what happend
                 throw new Error('Something went wrong during PTC login.');
             });
+    };
+
+    this.init = function() {
+        return self.request.getAsync({
+            url: 'https://sso.pokemon.com/sso/login',
+            qs: {
+                service: 'https://sso.pokemon.com/sso/oauth2.0/callbackAuthorize',
+                locale: 'en_US',
+            },
+            proxy: self.proxy,
+        })
+            .then(response => {
+                if (response.statusCode !== 200) {
+                    throw new Error(`Status ${response.statusCode} received from PTC login`);
+                }
+
+                let sessionResponse = null;
+                try {
+                    sessionResponse = JSON.parse(response.body);
+                } catch (e) {
+                    throw new Error('Unexpected response received from PTC login (invalid json)');
+                }
+
+                if (!sessionResponse || !sessionResponse.lt && !sessionResponse.execution) {
+                    throw new Error('No session data received from PTC login');
+                }
+
+                return sessionResponse;
+            });
+    };
+
+    this.auth = function(sessionData, username, password) {
+        sessionData._eventId = 'submit';
+        sessionData.username = username;
+        sessionData.password = password;
+        sessionData.locale = 'en_US';
+
+        return self.request.postAsync({
+            url: 'https://sso.pokemon.com/sso/login',
+            qs: {
+                service: 'https://sso.pokemon.com/sso/oauth2.0/callbackAuthorize',
+                locale: 'en_US',
+            },
+            form: sessionData,
+            proxy: self.proxy,
+        }).then(response => {
+            if (response.statusCode === 302 && response.headers) {
+                const location = response.headers.location;
+                return location.substring(location.indexOf('?ticket=') + '?ticket='.length);
+            } else {
+                let data;
+                try {
+                    data = JSON.parse(response.body);
+                } catch (e) {
+                    throw new Error('Incorrect response from PTC.');
+                }
+                if (data.errors) {
+                    throw new Error(data.errors[0]);
+                } else {
+                    throw new Error('Incorrect response from PTC.');
+                }
+            }
+        });
+    };
+
+    this.getAccessToken = function(ticket) {
+        return self.request.postAsync({
+            url: 'https://sso.pokemon.com/sso/oauth2.0/accessToken',
+            form: {
+                client_id: 'mobile-app_pokemon-go',
+                redirect_uri: 'https://www.nianticlabs.com/pokemongo/error',
+                client_secret: PTC_CLIENT_SECRET,
+                grant_type: 'refresh_token',
+                code: ticket,
+            },
+            proxy: self.proxy,
+        }).then(response => {
+            if (response.statusCode !== 200) {
+                throw new Error(`Status ${response.statusCode} received from PTC login`);
+            }
+
+            const resp = querystring.parse(response.body);
+            return resp.access_token;
+        });
     };
 
     /**
