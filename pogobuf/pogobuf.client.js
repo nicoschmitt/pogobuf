@@ -21,7 +21,12 @@ const INITIAL_PTR8 = '4d32f6b70cda8539ab82be5750e009d6d05a48ad';
 request.Request.prototype._init = request.Request.prototype.init;
 request.Request.prototype.init = function(args) {
     this._init(args);
-    this.removeHeader('Connection');
+    this.httpModule._request = this.httpModule.request;
+    this.httpModule.request = function(args) {
+        const r = this._request(args);
+        r.removeHeader('connection');
+        return r;
+    }
 }
 
 // See pogobuf wiki for description of options
