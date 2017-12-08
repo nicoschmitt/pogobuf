@@ -15,7 +15,14 @@ const RequestType = POGOProtos.Networking.Requests.RequestType,
     PlatformResponses = POGOProtos.Networking.Platform.Responses;
 
 const INITIAL_ENDPOINT = 'https://pgorelease.nianticlabs.com/plfe/rpc';
-const INITIAL_PTR8 = '15c79df0558009a4242518d2ab65de2a59e09499';
+const INITIAL_PTR8 = '4d32f6b70cda8539ab82be5750e009d6d05a48ad';
+
+// modify request internal so it doesn't send unwanted headers
+request.Request.prototype._init = request.Request.prototype.init;
+request.Request.prototype.init = function(args) {
+    this._init(args);
+    this.removeHeader('Connection');
+}
 
 // See pogobuf wiki for description of options
 const defaultOptions = {
@@ -241,9 +248,12 @@ function Client(options) {
         encoding: null,
         gzip: true,
         headers: {
-            'User-Agent': 'Niantic App',
             'Content-Type': 'application/binary',
+            'Host': 'pgorelease.nianticlabs.com',
+            'User-Agent': 'Niantic App',
+            'Content-Length': -1, // for order, will be fixed later
             'Accept-Encoding': 'identity, gzip',
+            'Connection': null,
         },
     });
     Promise.promisifyAll(this.request);
@@ -528,14 +538,17 @@ function Client(options) {
      */
     this.tryCallRPC = function(requests, envelope) {
         return self.buildSignedEnvelope(requests, envelope)
-            .then(signedEnvelope =>
-                self.request.postAsync({
+            .then(signedEnvelope => {
+                const body = encode(signedEnvelope);
+                return self.request.postAsync({
                     url: self.endpoint,
                     proxy: self.options.proxy,
-                    body: encode(signedEnvelope),
-                })
-                    .then(response => ({ signedEnvelope: signedEnvelope, response: response }))
-            )
+                    body: body,
+                    headers: {
+                        'Content-Length': body.length,
+                    },
+                }).then(response => ({ signedEnvelope: signedEnvelope, response: response }))
+            })
             .then(result => {
                 const signedEnvelope = result.signedEnvelope;
                 const response = result.response;

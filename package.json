@@ -31,8 +31,8 @@
     "bluebird-retry": "^0.11.0",
     "gpsoauth": "^1.0.1",
     "long": "^3.2.0",
-    "node-pogo-protos-vnext": "^2.17.1",
-    "pogobuf-signature": "^2.3.9",
+    "node-pogo-protos-vnext": "^2.18.0",
+    "pogobuf-signature": "^2.3.10",
     "request": "^2.83.0",
     "s2-geometry": "^1.2.9"
   },
