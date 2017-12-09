@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/pogosandbox/pogobuf#readme",
   "engines": {
-    "node": ">=7.0.0"
+    "node": ">=8.0.0"
   },
   "dependencies": {
     "bluebird": "^3.5.1",
