@@ -17,18 +17,6 @@ const RequestType = POGOProtos.Networking.Requests.RequestType,
 const INITIAL_ENDPOINT = 'https://pgorelease.nianticlabs.com/plfe/rpc';
 const INITIAL_PTR8 = '4d32f6b70cda8539ab82be5750e009d6d05a48ad';
 
-// modify request internal so it doesn't send unwanted headers
-request.Request.prototype._init = request.Request.prototype.init;
-request.Request.prototype.init = function(args) {
-    this._init(args);
-    this.httpModule._request = this.httpModule.request;
-    this.httpModule.request = function(args) {
-        const r = this._request(args);
-        r.removeHeader('connection');
-        return r;
-    }
-}
-
 // See pogobuf wiki for description of options
 const defaultOptions = {
     authType: 'ptc',
@@ -258,10 +246,8 @@ function Client(options) {
             'User-Agent': 'Niantic App',
             'Content-Length': -1, // for order, will be fixed later
             'Accept-Encoding': 'identity, gzip',
-            'Connection': null,
         },
     });
-    Promise.promisifyAll(this.request);
 
     this.options = Object.assign({}, defaultOptions, options || {});
     this.authTicket = null;
@@ -545,14 +531,20 @@ function Client(options) {
         return self.buildSignedEnvelope(requests, envelope)
             .then(signedEnvelope => {
                 const body = encode(signedEnvelope);
-                return self.request.postAsync({
-                    url: self.endpoint,
-                    proxy: self.options.proxy,
-                    body: body,
-                    headers: {
-                        'Content-Length': body.length,
-                    },
-                }).then(response => ({ signedEnvelope: signedEnvelope, response: response }))
+                // get request as it's created to remove the unwanted 'connection' header
+                return new Promise((resolve, reject) => {
+                    self.request.post({
+                        url: self.endpoint,
+                        proxy: self.options.proxy,
+                        body: body,
+                        headers: {
+                            'Content-Length': body.length,
+                        },
+                    }, (err, resp) => {
+                        if (err) reject(err);
+                        else resolve({ signedEnvelope: signedEnvelope, response: resp })
+                    }).on('request', req => req.removeHeader('connection'));
+                });
             })
             .then(result => {
                 const signedEnvelope = result.signedEnvelope;
