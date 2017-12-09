@@ -1,3 +1,7 @@
+# 3.0
+* No more `app_simulation` param, do it yourself
+* Switch to async/await, use a supported node version
+
 # 2.5.x
 * 0.73.1 compatibility (be sure dependencies are up to date) (2.5.0)
 * Bug fix (2.5.1)
