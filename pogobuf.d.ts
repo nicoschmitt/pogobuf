@@ -123,7 +123,7 @@ declare namespace pogobuf {
 
         downloadSettings(
             hash?: string
-        ): pogobuf.Client;;
+        ): pogobuf.Client;
 
         echo(
         ): Promise<POGOProtos.Networking.Responses.EchoResponse>;
