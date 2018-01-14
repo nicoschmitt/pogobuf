@@ -19,7 +19,7 @@ async function Main() {
         username: 'your-username@gmail.com',
         password: 'your-google-password',
         hashingKey: 'hash key',
-        useHashingServer: true,
+        version: 8705,
     });
 
     client.setPosition(pos.lat, pos.lng);
