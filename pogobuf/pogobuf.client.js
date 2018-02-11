@@ -128,8 +128,10 @@ function Client(options) {
             version: signatureVersion,
             initTime: (new Date().getTime() - 3500 - Math.random() * 5000),
         });
-        self.signatureEncryption.encryptAsync = Promise.promisify(self.signatureEncryption.encrypt,
-            { context: self.signatureEncryption });
+        self.signatureEncryption.encryptAsync = Promise.promisify(
+            self.signatureEncryption.encrypt,
+            { context: self.signatureEncryption }
+        );
 
         let promise = Promise.resolve(true);
         if (self.options.useHashingServer) {
@@ -515,7 +517,7 @@ function Client(options) {
         return retry(() => self.tryCallRPC(requests, envelope), {
             interval: 300,
             backoff: 2,
-            max_tries: self.options.maxTries
+            max_tries: self.options.maxTries,
         });
     };
 
@@ -542,7 +544,7 @@ function Client(options) {
                         },
                     }, (err, resp) => {
                         if (err) reject(err);
-                        else resolve({ signedEnvelope: signedEnvelope, response: resp })
+                        else resolve({ signedEnvelope: signedEnvelope, response: resp });
                     }).on('request', req => req.removeHeader('connection'));
                 });
             })
