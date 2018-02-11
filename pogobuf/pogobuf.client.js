@@ -694,7 +694,8 @@ function Client(options) {
             return Promise.resolve();
         } else {
             let version = +self.options.version;
-            if (version === 8900) version = 8901;
+            if (version === 8900) version = 8901; // fix for bossland endpoint naming
+            if (version === 9100) version = 8901; // fix for unpublished bossland endpoint
             return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
                 .then(hashVersion => {
                     self.hashingVersion = hashVersion;
