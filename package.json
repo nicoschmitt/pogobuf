@@ -1,6 +1,6 @@
 {
   "name": "pogobuf-vnext",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "Pokémon Go Client Library (vnext)",
   "main": "pogobuf/pogobuf.js",
   "typings": "./pogobuf.d.ts",
@@ -31,8 +31,8 @@
     "bluebird-retry": "^0.11.0",
     "gpsoauth": "^1.0.1",
     "long": "^4.0.0",
-    "node-pogo-protos-vnext": "^2.19.0",
-    "pogobuf-signature": "^2.3.13",
+    "node-pogo-protos-vnext": "^2.20.1",
+    "pogobuf-signature": "^2.4.0",
     "request": "^2.83.0",
     "s2-geometry": "^1.2.9"
   },
