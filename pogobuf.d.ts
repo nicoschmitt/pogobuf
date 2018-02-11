@@ -362,7 +362,14 @@ declare namespace pogobuf {
 
         verifyChallenge(
             token: string
-        ): Promise<POGOProtos.Networking.Responses.VerifyChallengeResponse>;
+        ): pogobuf.Client;
+
+        fetchAllNews(
+        ): pogobuf.Client;
+
+        markReadNewsArticle(
+            newsIds: string[]
+        ): pogobuf.Client;
 
         // platform client action
 
