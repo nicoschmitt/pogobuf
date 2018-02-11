@@ -26,6 +26,7 @@ const defaultOptions = {
     appSimulation: false,
     proxy: null,
     maxTries: 5,
+    maxTriesThrottling: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
     version: 8705,
@@ -512,6 +513,7 @@ function Client(options) {
      *     or true if there aren't any
      */
     this.callRPC = function(requests, envelope) {
+        self.throttled = 0;
         if (self.options.maxTries <= 1) return self.tryCallRPC(requests, envelope);
 
         return retry(() => self.tryCallRPC(requests, envelope), {
@@ -611,7 +613,12 @@ function Client(options) {
 
                 /* Throttling, retry same request later */
                 if (responseEnvelope.status_code === 52 && self.endpoint !== INITIAL_ENDPOINT) {
-                    return Promise.delay(2000).then(() => self.callRPC(requests, signedEnvelope));
+                    self.throttled++;
+                    if (self.throttled < self.options.maxTriesThrottling) {
+                        return Promise.delay(2000).then(() => self.tryCallRPC(requests, signedEnvelope));
+                    } else {
+                        throw new retry.StopError(`Throttled ${self.throttled} times`);
+                    }
                 }
 
                 /* These codes indicate invalid input, no use in retrying so throw StopError */
