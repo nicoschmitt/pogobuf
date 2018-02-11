@@ -15,7 +15,7 @@ const RequestType = POGOProtos.Networking.Requests.RequestType,
     PlatformResponses = POGOProtos.Networking.Platform.Responses;
 
 const INITIAL_ENDPOINT = 'https://pgorelease.nianticlabs.com/plfe/rpc';
-const INITIAL_PTR8 = '15c79df0558009a4242518d2ab65de2a59e09499';
+const INITIAL_PTR8 = '4d32f6b70cda8539ab82be5750e009d6d05a48ad';
 
 // See pogobuf wiki for description of options
 const defaultOptions = {
@@ -28,7 +28,7 @@ const defaultOptions = {
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 7500,
+    version: 8705,
     useHashingServer: true,
     hashingServer: 'http://pokehash.buddyauth.com/',
     hashingVersion: null,
@@ -241,12 +241,13 @@ function Client(options) {
         encoding: null,
         gzip: true,
         headers: {
-            'User-Agent': 'Niantic App',
             'Content-Type': 'application/binary',
+            'Host': 'pgorelease.nianticlabs.com',
+            'User-Agent': 'Niantic App',
+            'Content-Length': -1, // for order, will be fixed later
             'Accept-Encoding': 'identity, gzip',
         },
     });
-    Promise.promisifyAll(this.request);
 
     this.options = Object.assign({}, defaultOptions, options || {});
     this.authTicket = null;
@@ -528,14 +529,23 @@ function Client(options) {
      */
     this.tryCallRPC = function(requests, envelope) {
         return self.buildSignedEnvelope(requests, envelope)
-            .then(signedEnvelope =>
-                self.request.postAsync({
-                    url: self.endpoint,
-                    proxy: self.options.proxy,
-                    body: encode(signedEnvelope),
-                })
-                    .then(response => ({ signedEnvelope: signedEnvelope, response: response }))
-            )
+            .then(signedEnvelope => {
+                const body = encode(signedEnvelope);
+                // get request as it's created to remove the unwanted 'connection' header
+                return new Promise((resolve, reject) => {
+                    self.request.post({
+                        url: self.endpoint,
+                        proxy: self.options.proxy,
+                        body: body,
+                        headers: {
+                            'Content-Length': body.length,
+                        },
+                    }, (err, resp) => {
+                        if (err) reject(err);
+                        else resolve({ signedEnvelope: signedEnvelope, response: resp })
+                    }).on('request', req => req.removeHeader('connection'));
+                });
+            })
             .then(result => {
                 const signedEnvelope = result.signedEnvelope;
                 const response = result.response;
@@ -683,8 +693,9 @@ function Client(options) {
             self.hashingVersion = self.options.hashingVersion;
             return Promise.resolve();
         } else {
-            const version = +self.options.version;
-            if (version === 7501) version = 7500;
+            let version = +self.options.version;
+            if (version === 8900) version = 8901; // fix for bossland endpoint naming
+            if (version === 9100) version = 8901; // fix for unpublished bossland endpoint
             return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
                 .then(hashVersion => {
                     self.hashingVersion = hashVersion;

@@ -1,7 +1,7 @@
 'use strict';
 
-var s2 = require('s2-geometry').S2,
-    Long = require('long');
+const s2 = require('s2-geometry').S2;
+const Long = require('long');
 
 /**
  * Various utilities for dealing with Pokémon Go API requests.
@@ -24,15 +24,15 @@ module.exports = {
         if (typeof level === 'undefined') level = 15;
 
         /* eslint-disable new-cap */
-        var origin = s2.S2Cell.FromLatLng({
+        const origin = s2.S2Cell.FromLatLng({
             lat: lat,
             lng: lng
         }, level);
-        var cells = [];
+        let cells = [];
 
         cells.push(origin.toHilbertQuadkey()); // middle block
 
-        for (var i = 1; i < radius; i++) {
+        for (let i = 1; i < radius; i++) {
             // cross in middle
             cells.push(s2.S2Cell.FromFaceIJ(origin.face, [origin.ij[0], origin.ij[1] - i], origin.level)
                 .toHilbertQuadkey());
@@ -43,7 +43,7 @@ module.exports = {
             cells.push(s2.S2Cell.FromFaceIJ(origin.face, [origin.ij[0] + i, origin.ij[1]], origin.level)
                 .toHilbertQuadkey());
 
-            for (var j = 1; j < radius; j++) {
+            for (let j = 1; j < radius; j++) {
                 cells.push(s2.S2Cell.FromFaceIJ(origin.face, [origin.ij[0] - j, origin.ij[1] - i], origin.level)
                     .toHilbertQuadkey());
                 cells.push(s2.S2Cell.FromFaceIJ(origin.face, [origin.ij[0] + j, origin.ij[1] - i], origin.level)

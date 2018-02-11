@@ -1,6 +1,6 @@
 {
   "name": "pogobuf-vnext",
-  "version": "2.5.2",
+  "version": "2.5.10",
   "description": "Pokémon Go Client Library (vnext)",
   "main": "pogobuf/pogobuf.js",
   "typings": "./pogobuf.d.ts",
@@ -24,21 +24,21 @@
   },
   "homepage": "https://github.com/pogosandbox/pogobuf#readme",
   "engines": {
-    "node": ">=7.0.0"
+    "node": ">=8.0.0"
   },
   "dependencies": {
     "bluebird": "^3.5.1",
     "bluebird-retry": "^0.11.0",
     "gpsoauth": "^1.0.1",
     "long": "^3.2.0",
-    "node-pogo-protos-vnext": "^2.14.2",
-    "pogobuf-signature": "^2.3.6",
+    "node-pogo-protos-vnext": "^2.19.0",
+    "pogobuf-signature": "^2.3.13",
     "request": "^2.83.0",
     "s2-geometry": "^1.2.9"
   },
   "devDependencies": {
-    "eslint": "^4.8.0",
-    "eslint-config-airbnb-base": "^12.0.2",
-    "eslint-plugin-import": "^2.7.0"
+    "eslint": "^4.17.0",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.8.0"
   }
 }
