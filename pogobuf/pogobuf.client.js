@@ -473,7 +473,8 @@ function Client(options) {
                 // remove existing signature if any
                 envelope.platform_requests = envelope.platform_requests
                     .filter(env => env.type !== PlatformRequestType.SEND_ENCRYPTED_SIGNATURE);
-                self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
+                self.addPlatformRequestToEnvelope(
+                    envelope, PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
                     PlatformRequestMessages.SendEncryptedSignatureRequest.fromObject({
                         encrypted_signature: sigEncrypted
                     })
