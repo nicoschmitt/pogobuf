@@ -501,7 +501,7 @@ function Client(options) {
 
             self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
 
-            resolve(self.callRPC(requests, signedEnvelope));
+            resolve(self.tryCallRPC(requests, signedEnvelope));
         });
     };
 
