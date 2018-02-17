@@ -1,5 +1,3 @@
-'use strict';
-
 const s2 = require('s2-geometry').S2;
 const Long = require('long');
 
@@ -28,7 +26,7 @@ module.exports = {
             lat: lat,
             lng: lng
         }, level);
-        let cells = [];
+        const cells = [];
 
         cells.push(origin.toHilbertQuadkey()); // middle block
 
@@ -72,7 +70,7 @@ module.exports = {
             return {};
         }
 
-        let ret = {
+        const ret = {
             pokemon: [],
             removed_pokemon: [],
             items: [],
@@ -143,7 +141,7 @@ module.exports = {
     splitItemTemplates: function(templates) {
         if (!templates) return {};
 
-        let ret = {
+        const ret = {
             pokemon_settings: [],
             item_settings: [],
             move_settings: [],
@@ -221,7 +219,7 @@ module.exports = {
      * @static
      */
     getEnumKeyByValue: function(enumObj, val) {
-        for (let key of Object.keys(enumObj)) {
+        for (const key of Object.keys(enumObj)) {
             if (enumObj[key] === val) {
                 return key.split('_')
                     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -243,12 +241,12 @@ module.exports = {
 
         decimals = Math.min(decimals, 20);
 
-        let att = pokemon.individual_attack;
-        let def = pokemon.individual_defense;
-        let stam = pokemon.individual_stamina;
+        const att = pokemon.individual_attack;
+        const def = pokemon.individual_defense;
+        const stam = pokemon.individual_stamina;
 
-        let unroundedPercentage = (att + def + stam) / 45 * 100;
-        let percent = decimals < 0 ? unroundedPercentage : +unroundedPercentage.toFixed(decimals);
+        const unroundedPercentage = (att + def + stam) / 45 * 100;
+        const percent = decimals < 0 ? unroundedPercentage : +unroundedPercentage.toFixed(decimals);
 
         return {
             att,
@@ -274,11 +272,12 @@ module.exports = {
                 ? object.toNumber() : object.toString();
         }
 
-        for (let i in object) {
+        for (const i in object) {
             if (object.hasOwnProperty(i)) {
                 if (Long.isLong(object[i])) {
                     object[i] = object[i].lessThanOrEqual(Number.MAX_SAFE_INTEGER) && object[i].greaterThanOrEqual(
-                        Number.MIN_SAFE_INTEGER) ? object[i].toNumber() : object[i].toString();
+                        Number.MIN_SAFE_INTEGER
+                    ) ? object[i].toNumber() : object[i].toString();
                 } else if (typeof object[i] === 'object') {
                     object[i] = this.convertLongs(object[i]);
                 }

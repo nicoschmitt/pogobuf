@@ -27,7 +27,7 @@ async function Main() {
     const location = await nodeGeocoder().geocode('Invalides, Paris');
     if (!location.length) throw new Error('Location not found.');
 
-    var coords = {
+    const coords = {
         latitude: location[0].latitude,
         longitude: location[0].longitude,
         altitude: _.random(0, 20, true),
