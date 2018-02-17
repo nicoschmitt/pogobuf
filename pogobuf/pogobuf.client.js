@@ -259,6 +259,7 @@ function Client(options) {
     this.lastHashingKeyIndex = 0;
     this.firstGetMapObjects = true;
     this.ptr8 = INITIAL_PTR8;
+    this.throttled = 0;
 
     /**
      * Executes a request and returns a Promise or, if we are in batch mode, adds it to the
