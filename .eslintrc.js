@@ -13,7 +13,7 @@ module.exports = {
         "curly": [2, "multi-line"],
         "eol-last": 0,
         "func-names": 0,
-        "function-paren-newline": "consistent",
+        "function-paren-newline": [1, "consistent"],
         "import/newline-after-import": 0,
         "indent": [2, 4, {
             "SwitchCase": 1
