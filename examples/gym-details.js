@@ -37,9 +37,8 @@ async function Main() {
         authType: 'ptc',
         username: 'ptc user name',
         password: 'ptc password',
-        useHashingServer: true,
         hashingKey: 'your hashing key',
-        version: 6901,
+        version: 8705,
         includeRequestTypeInResponse: true,
     });
 

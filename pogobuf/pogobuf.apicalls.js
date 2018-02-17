@@ -102,8 +102,10 @@ module.exports.defineApiCalls = function(self) {
         });
     };
 
-    self.catchPokemon = function(encounterID, pokeballItemID, normalizedReticleSize, spawnPointID, hitPokemon,
-        spinModifier, normalizedHitPosition) {
+    self.catchPokemon = function(
+        encounterID, pokeballItemID, normalizedReticleSize, spawnPointID, hitPokemon,
+        spinModifier, normalizedHitPosition
+    ) {
         return self.callOrChain({
             type: RequestType.CATCH_POKEMON,
             message: RequestMessages.CatchPokemonMessage.fromObject({
@@ -518,8 +520,10 @@ module.exports.defineApiCalls = function(self) {
         });
     };
 
-    self.getAssetDigest = function(platform, deviceManufacturer, deviceModel, locale, appVersion,
-        paginate, pageOffset, pageTimestamp) {
+    self.getAssetDigest = function(
+        platform, deviceManufacturer, deviceModel, locale, appVersion,
+        paginate, pageOffset, pageTimestamp
+    ) {
         return self.callOrChain({
             type: RequestType.GET_ASSET_DIGEST,
             message: RequestMessages.GetAssetDigestMessage.fromObject({
@@ -688,6 +692,23 @@ module.exports.defineApiCalls = function(self) {
                 longitude: longitude,
             }),
             responseType: Responses.GetGymBadgeDetailsResponse
+        });
+    };
+
+    self.fetchAllNews = function() {
+        return self.callOrChain({
+            type: RequestType.FETCH_ALL_NEWS,
+            responseType: Responses.FetchAllNewsResponse,
+        });
+    };
+
+    self.markReadNewsArticle = function(newsIds) {
+        return self.callOrChain({
+            type: RequestType.MARK_READ_NEWS_ARTICLE,
+            message: RequestMessages.MarkReadNewsArticleMessage.fromObject({
+                news_ids: newsIds,
+            }),
+            responseType: Responses.MarkReadNewsArticleResponse,
         });
     };
 

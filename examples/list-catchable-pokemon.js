@@ -18,8 +18,7 @@ async function Main() {
         authType: 'ptc or google',
         username: 'your username',
         password: 'your password',
-        version: 6901,
-        useHashingServer: true,
+        version: 8705,
         hashingKey: 'hash key'
     });
     client.setPosition(lat, lng);

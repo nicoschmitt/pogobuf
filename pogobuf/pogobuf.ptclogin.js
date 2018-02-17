@@ -1,6 +1,6 @@
 /* eslint no-underscore-dangle: ["error", { "allow": ["_eventId"] }] */
 const request = require('request');
-const Promise = require('bluebird');
+const Bluebird = require('bluebird');
 const querystring = require('querystring');
 const url = require('url');
 
@@ -36,7 +36,7 @@ function PTCLogin() {
             gzip: true,
             jar: self.cookies,
         });
-        Promise.promisifyAll(self.request);
+        Bluebird.promisifyAll(self.request);
     };
 
     this.reset();
@@ -48,12 +48,12 @@ function PTCLogin() {
      * @param {string} password
      * @return {Promise}
      */
-    this.login = function(username, password) {
-        return self.logout()
-            .then(() => self.init())
-            .then(data => self.auth(data, username, password))
-            .then(data => self.getAccessToken(data))
-            .then(token => self.getProfile(token));
+    this.login = async function(username, password) {
+        await self.logout();
+        const data = await self.init();
+        const authdata = await self.auth(data, username, password);
+        const token = await self.getAccessToken(authdata);
+        return self.getProfile(token);
     };
 
     this.logout = function() {
@@ -66,42 +66,40 @@ function PTCLogin() {
         });
     };
 
-    this.init = function() {
-        return self.request.getAsync({
+    this.init = async function() {
+        const response = await self.request.getAsync({
             url: 'https://sso.pokemon.com/sso/login',
             qs: {
                 service: 'https://sso.pokemon.com/sso/oauth2.0/callbackAuthorize',
                 locale: 'en_US',
             },
             proxy: self.proxy,
-        })
-            .then(response => {
-                if (response.statusCode !== 200) {
-                    throw new Error(`Status ${response.statusCode} received from PTC login`);
-                }
+        });
+        if (response.statusCode !== 200) {
+            throw new Error(`Status ${response.statusCode} received from PTC login`);
+        }
 
-                let sessionResponse = null;
-                try {
-                    sessionResponse = JSON.parse(response.body);
-                } catch (e) {
-                    throw new Error('Unexpected response received from PTC login (invalid json)');
-                }
+        let sessionResponse = null;
+        try {
+            sessionResponse = JSON.parse(response.body);
+        } catch (e) {
+            throw new Error('Unexpected response received from PTC login (invalid json)');
+        }
 
-                if (!sessionResponse || !sessionResponse.lt && !sessionResponse.execution) {
-                    throw new Error('No session data received from PTC login');
-                }
+        if (!sessionResponse || !sessionResponse.lt && !sessionResponse.execution) {
+            throw new Error('No session data received from PTC login');
+        }
 
-                return sessionResponse;
-            });
+        return sessionResponse;
     };
 
-    this.auth = function(sessionData, username, password) {
+    this.auth = async function(sessionData, username, password) {
         sessionData._eventId = 'submit';
         sessionData.username = username;
         sessionData.password = password;
         sessionData.locale = 'en_US';
 
-        return self.request.postAsync({
+        const response = await self.request.postAsync({
             url: 'https://sso.pokemon.com/sso/login',
             qs: {
                 service: 'https://sso.pokemon.com/sso/oauth2.0/callbackAuthorize',
@@ -109,29 +107,29 @@ function PTCLogin() {
             },
             form: sessionData,
             proxy: self.proxy,
-        }).then(response => {
-            if (response.statusCode === 302 && response.headers.location) {
-                const ticketURL = url.parse(response.headers.location, true);
-                if (!ticketURL || !ticketURL.query.ticket) {
-                    throw new Error('No login ticket received from PTC login');
-                }
-                return ticketURL.query.ticket;
-            } else {
-                let data = {};
-                try {
-                    data = JSON.parse(response.body);
-                } catch (e) { /* nothing */ }
-                if (data.errors) {
-                    throw new Error(data.errors[0]);
-                } else {
-                    throw new Error('Incorrect response from PTC.');
-                }
-            }
         });
+
+        if (response.statusCode === 302 && response.headers.location) {
+            const ticketURL = url.parse(response.headers.location, true);
+            if (!ticketURL || !ticketURL.query.ticket) {
+                throw new Error('No login ticket received from PTC login');
+            }
+            return ticketURL.query.ticket;
+        } else {
+            let data = {};
+            try {
+                data = JSON.parse(response.body);
+            } catch (e) { /* nothing */ }
+            if (data.errors) {
+                throw new Error(data.errors[0]);
+            } else {
+                throw new Error('Incorrect response from PTC.');
+            }
+        }
     };
 
-    this.getAccessToken = function(ticket) {
-        return self.request.postAsync({
+    this.getAccessToken = async function(ticket) {
+        const response = await self.request.postAsync({
             url: 'https://sso.pokemon.com/sso/oauth2.0/accessToken',
             form: {
                 client_id: 'mobile-app_pokemon-go',
@@ -141,23 +139,23 @@ function PTCLogin() {
                 code: ticket,
             },
             proxy: self.proxy,
-        }).then(response => {
-            if (response.statusCode !== 200) {
-                throw new Error(`Status ${response.statusCode} received from PTC login`);
-            }
-
-            const resp = querystring.parse(response.body);
-            return resp.access_token;
         });
+
+        if (response.statusCode !== 200) {
+            throw new Error(`Status ${response.statusCode} received from PTC login`);
+        }
+
+        const resp = querystring.parse(response.body);
+        return resp.access_token;
     };
 
     /**
      * Get user profile. We don't really care about the result, but the app does it.
      * @param {string} token
-     * @return {string} login token
+     * @return {Promise<string>} login token
      */
-    this.getProfile = function(token) {
-        return self.request.postAsync({
+    this.getProfile = async function(token) {
+        await self.request.postAsync({
             url: 'https://sso.pokemon.com/sso/oauth2.0/profil',
             form: {
                 access_token: token,
@@ -165,7 +163,8 @@ function PTCLogin() {
                 locale: 'en_US',
             },
             proxy: self.proxy,
-        }).then(() => token);
+        });
+        return token;
     };
 
     /**

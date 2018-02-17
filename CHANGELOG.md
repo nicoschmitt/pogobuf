@@ -2,6 +2,12 @@
 * No more `app_simulation` param, do it yourself
 * Switch to async/await, use a supported node version
 
+# 2.6.x
+* Compatible with 0.91.x
+* Add `fetchAllNews` and `markReadNewsArticle`
+* Update to long.js 4.0
+* Bug fixes
+
 # 2.5.x
 * 0.73.1 compatibility (be sure dependencies are up to date) (2.5.0)
 * Bug fix (2.5.1)

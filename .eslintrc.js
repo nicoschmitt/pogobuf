@@ -13,6 +13,7 @@ module.exports = {
         "curly": [2, "multi-line"],
         "eol-last": 0,
         "func-names": 0,
+        "function-paren-newline": [1, "consistent"],
         "import/newline-after-import": 0,
         "indent": [2, 4, {
             "SwitchCase": 1
@@ -40,6 +41,7 @@ module.exports = {
         "no-use-before-define": 1,
         "object-shorthand": [2, "consistent"],
         "one-var": 0,
+        "prefer-destructuring": 0,
         "prefer-template": 0,
         "quote-props": [1, "consistent"],
         "quotes": [2, "single"],

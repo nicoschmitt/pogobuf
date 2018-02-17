@@ -30,7 +30,7 @@ const defaultOptions = {
     maxTries: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
-    version: 7500,
+    version: 8705,
     useHashingServer: true,
     hashingServer: 'http://pokehash.buddyauth.com/',
     hashingVersion: null,
@@ -108,7 +108,6 @@ function Client(options) {
 
     /**
      * Performs client initialization and do a proper api init call.
-     * @return {Promise} promise
      */
     this.init = async function() {
         self.lastMapObjectsCall = 0;
@@ -126,8 +125,11 @@ function Client(options) {
             version: signatureVersion,
             initTime: (new Date().getTime() - 3500 - Math.random() * 5000),
         });
-        self.signatureEncryption.encryptAsync = Bluebird.promisify(self.signatureEncryption.encrypt,
-            { context: self.signatureEncryption });
+
+        self.signatureEncryption.encryptAsync = Bluebird.promisify(
+            self.signatureEncryption.encrypt,
+            { context: self.signatureEncryption }
+        );
 
         if (self.options.useHashingServer) {
             await self.initializeHashingServer();
@@ -448,11 +450,11 @@ function Client(options) {
         envelope.platform_requests = envelope.platform_requests
             .filter(env => env.type !== PlatformRequestType.SEND_ENCRYPTED_SIGNATURE);
 
-        self.addPlatformRequestToEnvelope(envelope, PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
+        self.addPlatformRequestToEnvelope(envelope,
+            PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
             PlatformRequestMessages.SendEncryptedSignatureRequest.fromObject({
                 encrypted_signature: sigEncrypted
-            })
-        );
+            }));
 
         return envelope;
     };
@@ -487,7 +489,7 @@ function Client(options) {
         return retry(() => self.tryCallRPC(requests, envelope), {
             interval: 300,
             backoff: 2,
-            max_tries: self.options.maxTries
+            max_tries: self.options.maxTries,
         });
     };
 
@@ -501,7 +503,7 @@ function Client(options) {
             self.request.post({
                 url: self.endpoint,
                 proxy: self.options.proxy,
-                body,
+                body: body,
                 headers: {
                     'Content-Length': body.length,
                 },
@@ -510,7 +512,7 @@ function Client(options) {
                 else resolve(resp);
             }).on('request', req => req.removeHeader('connection'));
         });
-    }
+    };
 
     /**
      * Executes an RPC call with the given list of requests.
@@ -570,7 +572,7 @@ function Client(options) {
         /* Auth expired, auto relogin */
         if (responseEnvelope.status_code === 102 && self.login) {
             self.login.reset();
-            const token = self.login.login(self.options.username, self.options.password)
+            const token = await self.login.login(self.options.username, self.options.password);
             self.options.authToken = token;
             self.authTicket = null;
             signedEnvelope.auth_ticket = null;
@@ -650,7 +652,6 @@ function Client(options) {
     /**
      * Makes an initial call to the hashing server to verify API version.
      * @private
-     * @return {Promise}
      */
     this.initializeHashingServer = async function() {
         if (!self.options.hashingServer) throw new Error('Hashing server enabled without host');
@@ -664,6 +665,8 @@ function Client(options) {
             self.hashingVersion = self.options.hashingVersion;
         } else {
             let version = +self.options.version;
+            if (version === 8900) version = 8901; // fix for bossland endpoint naming
+            if (version === 9100) version = 8901; // fix for unpublished bossland endpoint
             self.hashingVersion = await Signature.versions.getHashingEndpoint(self.options.hashingServer, version);
         }
     };

@@ -15,6 +15,9 @@
 * Support proxy
 * 100% pure JS, no native library bindings
 
+## Install
+`npm i pogobuf-vnext`
+
 ## Acknowledgements
 * Uses the excellent [POGOProtos](https://github.com/AeonLucid/POGOProtos) (via [node-pogo-protos](https://github.com/pogosandbox/node-pogo-protos))
 
