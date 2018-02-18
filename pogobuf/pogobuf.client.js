@@ -1,3 +1,5 @@
+/* eslint no-underscore-dangle: ["error", { "allow": ["_requestType", "_ptfmRequestType"] }] */
+
 const Long = require('long'),
     POGOProtos = require('node-pogo-protos-vnext'),
     Signature = require('pogobuf-signature'),
@@ -661,7 +663,6 @@ function Client(options) {
                         }
 
                         if (self.options.includeRequestTypeInResponse) {
-                            // eslint-disable-next-line no-underscore-dangle
                             responseMessage._requestType = requests[i].type;
                         }
                         responses.push(responseMessage);
