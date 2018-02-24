@@ -1,3 +1,5 @@
+/* eslint no-underscore-dangle: ["error", { "allow": ["_requestType", "_ptfmRequestType"] }] */
+
 const Long = require('long'),
     POGOProtos = require('node-pogo-protos-vnext'),
     Signature = require('pogobuf-signature'),
@@ -26,6 +28,7 @@ const defaultOptions = {
     appSimulation: false,
     proxy: null,
     maxTries: 5,
+    maxTriesThrottling: 5,
     automaticLongConversion: true,
     includeRequestTypeInResponse: false,
     version: 8705,
@@ -258,6 +261,7 @@ function Client(options) {
     this.lastHashingKeyIndex = 0;
     this.firstGetMapObjects = true;
     this.ptr8 = INITIAL_PTR8;
+    this.throttled = 0;
 
     /**
      * Executes a request and returns a Promise or, if we are in batch mode, adds it to the
@@ -500,7 +504,7 @@ function Client(options) {
 
             self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
 
-            resolve(self.callRPC(requests, signedEnvelope));
+            resolve(self.tryCallRPC(requests, signedEnvelope));
         });
     };
 
@@ -513,6 +517,7 @@ function Client(options) {
      *     or true if there aren't any
      */
     this.callRPC = function(requests, envelope) {
+        self.throttled = 0;
         if (self.options.maxTries <= 1) return self.tryCallRPC(requests, envelope);
 
         return retry(() => self.tryCallRPC(requests, envelope), {
@@ -612,7 +617,12 @@ function Client(options) {
 
                 /* Throttling, retry same request later */
                 if (responseEnvelope.status_code === 52 && self.endpoint !== INITIAL_ENDPOINT) {
-                    return Promise.delay(2000).then(() => self.callRPC(requests, signedEnvelope));
+                    self.throttled++;
+                    if (self.throttled < self.options.maxTriesThrottling) {
+                        return Promise.delay(2000).then(() => self.tryCallRPC(requests, signedEnvelope));
+                    } else {
+                        throw new retry.StopError(`Throttled ${self.throttled} times`);
+                    }
                 }
 
                 /* These codes indicate invalid input, no use in retrying so throw StopError */
@@ -653,7 +663,6 @@ function Client(options) {
                         }
 
                         if (self.options.includeRequestTypeInResponse) {
-                            // eslint-disable-next-line no-underscore-dangle
                             responseMessage._requestType = requests[i].type;
                         }
                         responses.push(responseMessage);

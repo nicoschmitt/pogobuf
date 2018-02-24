@@ -28,8 +28,8 @@ module.exports = {
             lat: lat,
             lng: lng
         }, level);
-        let cells = [];
 
+        const cells = [];
         cells.push(origin.toHilbertQuadkey()); // middle block
 
         for (let i = 1; i < radius; i++) {
@@ -278,7 +278,8 @@ module.exports = {
             if (object.hasOwnProperty(i)) {
                 if (Long.isLong(object[i])) {
                     object[i] = object[i].lessThanOrEqual(Number.MAX_SAFE_INTEGER) && object[i].greaterThanOrEqual(
-                        Number.MIN_SAFE_INTEGER) ? object[i].toNumber() : object[i].toString();
+                        Number.MIN_SAFE_INTEGER
+                    ) ? object[i].toNumber() : object[i].toString();
                 } else if (typeof object[i] === 'object') {
                     object[i] = this.convertLongs(object[i]);
                 }
