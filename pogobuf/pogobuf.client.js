@@ -337,7 +337,7 @@ function Client(options) {
         } else if (!self.options.authType || !self.options.authToken) {
             throw Error('No auth info provided');
         } else {
-            envelopeData.auth_info = this.getAuthInfoObject();
+            envelopeData.auth_info = self.getAuthInfoObject();
         }
 
         if (requests) {
@@ -607,10 +607,13 @@ function Client(options) {
                     return self.login
                         .login(self.options.username, self.options.password)
                         .then(token => {
+                            if (!token) throw new retry.StopError('Error during relogin, no token returned.');
+                            const authInfo = self.getAuthInfoObject();
+                            const enc = POGOProtos.Networking.Envelopes.RequestEnvelope.AuthInfo.fromObject(authInfo);
                             self.options.authToken = token;
                             self.authTicket = null;
                             signedEnvelope.auth_ticket = null;
-                            signedEnvelope.auth_info = this.getAuthInfoObject();
+                            signedEnvelope.auth_info = enc;
                             return self.callRPC(requests, signedEnvelope);
                         });
                 }
