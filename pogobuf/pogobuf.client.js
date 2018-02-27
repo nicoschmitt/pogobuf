@@ -483,6 +483,7 @@ function Client(options) {
     /**
      * Executes an RPC call with the given list of requests, retrying if necessary.
      * @private
+     * @param {Object[]} [requests] - Requests array
      * @param {Object} [envelope] - Pre-built request envelope to use (POGOProtos RequestEnvelope)
      * @param {boolean} force force request even it it's relogin
      * @return {Bluebird} - A Promise that will be resolved with the (list of) response messages,

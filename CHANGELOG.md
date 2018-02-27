@@ -1,6 +1,7 @@
 # 3.0
 * No more `app_simulation` param, do it yourself
 * Switch to async/await, use a supported node version
+* Fix edge case when multiple calls are called simultaneously
 
 # 2.6.x
 * Compatible with 0.91.x
