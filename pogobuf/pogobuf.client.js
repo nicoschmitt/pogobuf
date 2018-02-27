@@ -262,6 +262,7 @@ function Client(options) {
     this.firstGetMapObjects = true;
     this.ptr8 = INITIAL_PTR8;
     this.throttled = 0;
+    this.isRelogin = false; // for edge case to reject requests while relogin
 
     /**
      * Executes a request and returns a Promise or, if we are in batch mode, adds it to the
@@ -535,160 +536,160 @@ function Client(options) {
      * @return {Promise} - A Promise that will be resolved with the (list of) response messages,
      *     or true if there aren't any
      */
-    this.tryCallRPC = function(requests, envelope) {
-        return self.buildSignedEnvelope(requests, envelope)
-            .then(signedEnvelope => {
-                const body = encode(signedEnvelope);
-                // get request as it's created to remove the unwanted 'connection' header
-                return new Promise((resolve, reject) => {
-                    self.request.post({
-                        url: self.endpoint,
-                        proxy: self.options.proxy,
-                        body: body,
-                        headers: {
-                            'Content-Length': body.length,
-                        },
-                    }, (err, resp) => {
-                        if (err) reject(err);
-                        else resolve({ signedEnvelope: signedEnvelope, response: resp });
-                    }).on('request', req => req.removeHeader('connection'));
-                });
-            })
-            .then(result => {
-                const signedEnvelope = result.signedEnvelope;
-                const response = result.response;
-                if (response.statusCode !== 200) {
-                    if (response.statusCode >= 400 && response.statusCode < 500) {
-                        /* These are permanent errors so throw StopError */
-                        throw new retry.StopError(
-                            `Status code ${response.statusCode} received from HTTPS request`
-                        );
-                    } else {
-                        /* Anything else might be recoverable so throw regular Error */
-                        throw new Error(
-                            `Status code ${response.statusCode} received from HTTPS request`
-                        );
-                    }
-                }
+    this.tryCallRPC = async function(requests, envelope) {
+        if (self.isRelogin) {
+            throw new Error('Current relogin, wait a bit.');
+        }
+        const signedEnvelope = self.buildSignedEnvelope(requests, envelope);
+        const body = encode(signedEnvelope);
 
-                let responseEnvelope;
+        // get request as it's created to remove the unwanted 'connection' header
+        const response = await new Promise((resolve, reject) => {
+            self.request.post({
+                url: self.endpoint,
+                proxy: self.options.proxy,
+                body: body,
+                headers: {
+                    'Content-Length': body.length,
+                },
+            }, (err, resp) => {
+                if (err) reject(err);
+                else resolve(resp);
+            }).on('request', req => req.removeHeader('connection'));
+        });
+
+        if (response.statusCode !== 200) {
+            if (response.statusCode >= 400 && response.statusCode < 500) {
+                /* These are permanent errors so throw StopError */
+                throw new retry.StopError(
+                    `Status code ${response.statusCode} received from HTTPS request`
+                );
+            } else {
+                /* Anything else might be recoverable so throw regular Error */
+                throw new Error(
+                    `Status code ${response.statusCode} received from HTTPS request`
+                );
+            }
+        }
+
+        let responseEnvelope;
+        try {
+            responseEnvelope =
+                POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(response.body);
+        } catch (e) {
+            if (e.decoded) {
+                responseEnvelope = e.decoded;
+            } else {
+                throw new retry.StopError(e);
+            }
+        }
+
+        if (responseEnvelope.error) {
+            throw new retry.StopError(responseEnvelope.error);
+        }
+
+        if (responseEnvelope.auth_ticket) self.authTicket = responseEnvelope.auth_ticket;
+
+        if (responseEnvelope.status_code === 53 ||
+            (responseEnvelope.status_code === 2 && self.endpoint === INITIAL_ENDPOINT)) {
+            return self.redirect(requests, signedEnvelope, responseEnvelope);
+        }
+
+        responseEnvelope.platform_returns.forEach(platformReturn => {
+            if (platformReturn.type === PlatformRequestType.UNKNOWN_PTR_8) {
+                const ptr8 = PlatformResponses.UnknownPtr8Response.decode(platformReturn.response);
+                if (ptr8) self.ptr8 = ptr8.message;
+            }
+        });
+
+        /* Auth expired, auto relogin */
+        if (responseEnvelope.status_code === 102 && self.login) {
+            self.isRelogin = true;
+            self.login.reset();
+            const token = await self.login.login(self.options.username, self.options.password);
+            if (!token) throw new retry.StopError('Error during relogin, no token returned.');
+            const authInfo = self.getAuthInfoObject();
+            const enc = POGOProtos.Networking.Envelopes.RequestEnvelope.AuthInfo.fromObject(authInfo);
+            self.options.authToken = token;
+            self.authTicket = null;
+            signedEnvelope.auth_ticket = null;
+            signedEnvelope.auth_info = enc;
+            const rpcresp = await self.callRPC(requests, signedEnvelope);
+            self.isRelogin = false;
+            return rpcresp;
+        }
+
+        /* Throttling, retry same request later */
+        if (responseEnvelope.status_code === 52 && self.endpoint !== INITIAL_ENDPOINT) {
+            self.throttled++;
+            if (self.throttled < self.options.maxTriesThrottling) {
+                await Promise.delay(2000);
+                return self.tryCallRPC(requests, signedEnvelope);
+            } else {
+                throw new retry.StopError(`Throttled ${self.throttled} times`);
+            }
+        }
+
+        /* These codes indicate invalid input, no use in retrying so throw StopError */
+        if (responseEnvelope.status_code === 3 || responseEnvelope.status_code === 51 ||
+            responseEnvelope.status_code >= 100) {
+            throw new retry.StopError(
+                `Status code ${responseEnvelope.status_code} received from RPC`
+            );
+        }
+
+        /* These can be temporary so throw regular Error */
+        if (responseEnvelope.status_code !== 2 && responseEnvelope.status_code !== 1) {
+            throw new Error(
+                `Status code ${responseEnvelope.status_code} received from RPC`
+            );
+        }
+
+        let responses = [];
+
+        if (requests && requests.length > 0) {
+            if (requests.length !== responseEnvelope.returns.length) {
+                throw new Error('Request count does not match response count');
+            }
+
+            for (let i = 0; i < responseEnvelope.returns.length; i++) {
+                if (!requests[i].responseType) continue;
+
+                let responseMessage;
                 try {
-                    responseEnvelope =
-                        POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(response.body);
+                    responseMessage = requests[i].responseType.decode(
+                        responseEnvelope.returns[i]
+                    );
+                    responseMessage = requests[i].responseType.toObject(
+                        responseMessage, { defaults: true }
+                    );
                 } catch (e) {
-                    if (e.decoded) {
-                        responseEnvelope = e.decoded;
-                    } else {
-                        throw new retry.StopError(e);
-                    }
+                    throw new retry.StopError(e);
                 }
 
-                if (responseEnvelope.error) {
-                    throw new retry.StopError(responseEnvelope.error);
+                if (self.options.includeRequestTypeInResponse) {
+                    responseMessage._requestType = requests[i].type;
                 }
-
-                if (responseEnvelope.auth_ticket) self.authTicket = responseEnvelope.auth_ticket;
-
-                if (responseEnvelope.status_code === 53 ||
-                    (responseEnvelope.status_code === 2 && self.endpoint === INITIAL_ENDPOINT)) {
-                    return self.redirect(requests, signedEnvelope, responseEnvelope);
+                responses.push(responseMessage);
+            }
+        } else {
+            responseEnvelope.platform_returns.forEach(platformReturn => {
+                if (platformReturn.type === PlatformRequestType.GET_STORE_ITEMS) {
+                    const store = PlatformResponses.GetStoreItemsResponse.decode(platformReturn.response);
+                    store._requestType = -1;
+                    store._ptfmRequestType = PlatformRequestType.GET_STORE_ITEMS;
+                    responses.push(store);
                 }
-
-                responseEnvelope.platform_returns.forEach(platformReturn => {
-                    if (platformReturn.type === PlatformRequestType.UNKNOWN_PTR_8) {
-                        const ptr8 = PlatformResponses.UnknownPtr8Response.decode(platformReturn.response);
-                        if (ptr8) self.ptr8 = ptr8.message;
-                    }
-                });
-
-                /* Auth expired, auto relogin */
-                if (responseEnvelope.status_code === 102 && self.login) {
-                    self.login.reset();
-                    return self.login
-                        .login(self.options.username, self.options.password)
-                        .then(token => {
-                            if (!token) throw new retry.StopError('Error during relogin, no token returned.');
-                            const authInfo = self.getAuthInfoObject();
-                            const enc = POGOProtos.Networking.Envelopes.RequestEnvelope.AuthInfo.fromObject(authInfo);
-                            self.options.authToken = token;
-                            self.authTicket = null;
-                            signedEnvelope.auth_ticket = null;
-                            signedEnvelope.auth_info = enc;
-                            return self.callRPC(requests, signedEnvelope);
-                        });
-                }
-
-                /* Throttling, retry same request later */
-                if (responseEnvelope.status_code === 52 && self.endpoint !== INITIAL_ENDPOINT) {
-                    self.throttled++;
-                    if (self.throttled < self.options.maxTriesThrottling) {
-                        return Promise.delay(2000).then(() => self.tryCallRPC(requests, signedEnvelope));
-                    } else {
-                        throw new retry.StopError(`Throttled ${self.throttled} times`);
-                    }
-                }
-
-                /* These codes indicate invalid input, no use in retrying so throw StopError */
-                if (responseEnvelope.status_code === 3 || responseEnvelope.status_code === 51 ||
-                    responseEnvelope.status_code >= 100) {
-                    throw new retry.StopError(
-                        `Status code ${responseEnvelope.status_code} received from RPC`
-                    );
-                }
-
-                /* These can be temporary so throw regular Error */
-                if (responseEnvelope.status_code !== 2 && responseEnvelope.status_code !== 1) {
-                    throw new Error(
-                        `Status code ${responseEnvelope.status_code} received from RPC`
-                    );
-                }
-
-                let responses = [];
-
-                if (requests && requests.length > 0) {
-                    if (requests.length !== responseEnvelope.returns.length) {
-                        throw new Error('Request count does not match response count');
-                    }
-
-                    for (let i = 0; i < responseEnvelope.returns.length; i++) {
-                        if (!requests[i].responseType) continue;
-
-                        let responseMessage;
-                        try {
-                            responseMessage = requests[i].responseType.decode(
-                                responseEnvelope.returns[i]
-                            );
-                            responseMessage = requests[i].responseType.toObject(
-                                responseMessage, { defaults: true }
-                            );
-                        } catch (e) {
-                            throw new retry.StopError(e);
-                        }
-
-                        if (self.options.includeRequestTypeInResponse) {
-                            responseMessage._requestType = requests[i].type;
-                        }
-                        responses.push(responseMessage);
-                    }
-                } else {
-                    responseEnvelope.platform_returns.forEach(platformReturn => {
-                        if (platformReturn.type === PlatformRequestType.GET_STORE_ITEMS) {
-                            const store = PlatformResponses.GetStoreItemsResponse.decode(platformReturn.response);
-                            store._requestType = -1;
-                            store._ptfmRequestType = PlatformRequestType.GET_STORE_ITEMS;
-                            responses.push(store);
-                        }
-                    });
-                }
-
-                if (self.options.automaticLongConversion) {
-                    responses = Utils.convertLongs(responses);
-                }
-
-                if (!responses.length) return true;
-                else if (responses.length === 1) return responses[0];
-                return responses;
             });
+        }
+
+        if (self.options.automaticLongConversion) {
+            responses = Utils.convertLongs(responses);
+        }
+
+        if (!responses.length) return true;
+        else if (responses.length === 1) return responses[0];
+        return responses;
     };
 
     /**
