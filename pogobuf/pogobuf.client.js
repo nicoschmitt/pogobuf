@@ -509,7 +509,7 @@ function Client(options) {
             self.request.post({
                 url: self.endpoint,
                 proxy: self.options.proxy,
-                body,
+                body: body,
                 headers: {
                     'Content-Length': body.length,
                 },
