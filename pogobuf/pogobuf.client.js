@@ -514,14 +514,15 @@ function Client(options) {
      * @private
      * @param {Object[]} requests - Array of requests to send
      * @param {RequestEnvelope} [envelope] - Pre-built request envelope to use
+     * @param {boolean} force force request even it it's relogin
      * @return {Promise} - A Promise that will be resolved with the (list of) response messages,
      *     or true if there aren't any
      */
-    this.callRPC = function(requests, envelope) {
+    this.callRPC = function(requests, envelope, force) {
         self.throttled = 0;
-        if (self.options.maxTries <= 1) return self.tryCallRPC(requests, envelope);
+        if (self.options.maxTries <= 1) return self.tryCallRPC(requests, envelope, force);
 
-        return retry(() => self.tryCallRPC(requests, envelope), {
+        return retry(() => self.tryCallRPC(requests, envelope, force), {
             interval: 300,
             backoff: 2,
             max_tries: self.options.maxTries,
@@ -533,11 +534,12 @@ function Client(options) {
      * @private
      * @param {Object[]} requests - Array of requests to send
      * @param {RequestEnvelope} [envelope] - Pre-built request envelope to use
+     * @param {boolean} force force request even it it's relogin
      * @return {Promise} - A Promise that will be resolved with the (list of) response messages,
      *     or true if there aren't any
      */
-    this.tryCallRPC = async function(requests, envelope) {
-        if (self.isRelogin) {
+    this.tryCallRPC = async function(requests, envelope, force) {
+        if (!force && self.isRelogin) {
             throw new Error('Current relogin, wait a bit.');
         }
         const signedEnvelope = await self.buildSignedEnvelope(requests, envelope);
@@ -614,7 +616,7 @@ function Client(options) {
             self.authTicket = null;
             signedEnvelope.auth_ticket = null;
             signedEnvelope.auth_info = enc;
-            const rpcresp = await self.callRPC(requests, signedEnvelope);
+            const rpcresp = await self.callRPC(requests, signedEnvelope, true);
             self.isRelogin = false;
             return rpcresp;
         }
