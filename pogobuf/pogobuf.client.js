@@ -540,7 +540,7 @@ function Client(options) {
         if (self.isRelogin) {
             throw new Error('Current relogin, wait a bit.');
         }
-        const signedEnvelope = self.buildSignedEnvelope(requests, envelope);
+        const signedEnvelope = await self.buildSignedEnvelope(requests, envelope);
         const body = encode(signedEnvelope);
 
         // get request as it's created to remove the unwanted 'connection' header
