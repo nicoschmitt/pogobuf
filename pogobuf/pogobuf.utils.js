@@ -1,5 +1,3 @@
-'use strict';
-
 const s2 = require('s2-geometry').S2;
 const Long = require('long');
 
@@ -72,7 +70,7 @@ module.exports = {
             return {};
         }
 
-        var ret = {
+        const ret = {
             pokemon: [],
             removed_pokemon: [],
             items: [],
@@ -143,7 +141,7 @@ module.exports = {
     splitItemTemplates: function(templates) {
         if (!templates) return {};
 
-        var ret = {
+        const ret = {
             pokemon_settings: [],
             item_settings: [],
             move_settings: [],
@@ -221,7 +219,7 @@ module.exports = {
      * @static
      */
     getEnumKeyByValue: function(enumObj, val) {
-        for (var key of Object.keys(enumObj)) {
+        for (const key of Object.keys(enumObj)) {
             if (enumObj[key] === val) {
                 return key.split('_')
                     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -234,7 +232,7 @@ module.exports = {
     /**
      * Utility method to get the Individual Values from Pokémon
      * @param {object} pokemon - A pokemon_data structure
-     * @param {integer} [decimals=-1] - Amount of decimals, negative values do not round, max 20
+     * @param {number} [decimals=-1] - Amount of decimals, negative values do not round, max 20
      * @returns {object}
      * @static
      */
@@ -243,18 +241,18 @@ module.exports = {
 
         decimals = Math.min(decimals, 20);
 
-        var att = pokemon.individual_attack,
-            def = pokemon.individual_defense,
-            stam = pokemon.individual_stamina;
+        const att = pokemon.individual_attack;
+        const def = pokemon.individual_defense;
+        const stam = pokemon.individual_stamina;
 
-        var unroundedPercentage = (att + def + stam) / 45 * 100;
-        var percent = decimals < 0 ? unroundedPercentage : +unroundedPercentage.toFixed(decimals);
+        const unroundedPercentage = (att + def + stam) / 45 * 100;
+        const percent = decimals < 0 ? unroundedPercentage : +unroundedPercentage.toFixed(decimals);
 
         return {
-            att: att,
-            def: def,
-            stam: stam,
-            percent: percent
+            att,
+            def,
+            stam,
+            percent,
         };
     },
 
@@ -274,7 +272,7 @@ module.exports = {
                 ? object.toNumber() : object.toString();
         }
 
-        for (var i in object) {
+        for (const i in object) {
             if (object.hasOwnProperty(i)) {
                 if (Long.isLong(object[i])) {
                     object[i] = object[i].lessThanOrEqual(Number.MAX_SAFE_INTEGER) && object[i].greaterThanOrEqual(

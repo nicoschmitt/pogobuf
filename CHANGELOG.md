@@ -1,3 +1,7 @@
+# 3.0
+* No more `app_simulation` param, do it yourself
+* Switch to async/await, use a supported node version
+
 # 2.6.x
 * Compatible with 0.91.x
 * Add `fetchAllNews` and `markReadNewsArticle`

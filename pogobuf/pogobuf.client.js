@@ -3,7 +3,7 @@
 const Long = require('long'),
     POGOProtos = require('node-pogo-protos-vnext'),
     Signature = require('pogobuf-signature'),
-    Promise = require('bluebird'),
+    Bluebird = require('bluebird'),
     retry = require('bluebird-retry'),
     request = require('request'),
     Utils = require('./pogobuf.utils.js'),
@@ -16,6 +16,9 @@ const RequestType = POGOProtos.Networking.Requests.RequestType,
     PlatformRequestMessages = POGOProtos.Networking.Platform.Requests,
     PlatformResponses = POGOProtos.Networking.Platform.Responses;
 
+// @ts-ignore
+const StopError = retry.StopError;
+
 const INITIAL_ENDPOINT = 'https://pgorelease.nianticlabs.com/plfe/rpc';
 const INITIAL_PTR8 = '4d32f6b70cda8539ab82be5750e009d6d05a48ad';
 
@@ -25,7 +28,6 @@ const defaultOptions = {
     authToken: null,
     username: null,
     password: null,
-    appSimulation: false,
     proxy: null,
     maxTries: 5,
     maxTriesThrottling: 5,
@@ -41,7 +43,7 @@ const defaultOptions = {
 
 /**
  * Helper function to encode proto
- * @param {Messsage} proto
+ * @param {Object} proto message
  * @return {Buffer} buffer
  */
 function encode(proto) {
@@ -109,13 +111,8 @@ function Client(options) {
 
     /**
      * Performs client initialization and do a proper api init call.
-     * @param {boolean} [appSimulation] - Deprecated, use appSimulation option instead
-     * @return {Promise} promise
      */
-    this.init = function(appSimulation) {
-        // For backwards compatibility only
-        if (typeof appSimulation !== 'undefined') self.setOption('appSimulation', appSimulation);
-
+    this.init = async function() {
         self.lastMapObjectsCall = 0;
         self.endpoint = INITIAL_ENDPOINT;
 
@@ -131,14 +128,14 @@ function Client(options) {
             version: signatureVersion,
             initTime: (new Date().getTime() - 3500 - Math.random() * 5000),
         });
-        self.signatureEncryption.encryptAsync = Promise.promisify(
+
+        self.signatureEncryption.encryptAsync = Bluebird.promisify(
             self.signatureEncryption.encrypt,
             { context: self.signatureEncryption }
         );
 
-        let promise = Promise.resolve(true);
         if (self.options.useHashingServer) {
-            promise = promise.then(self.initializeHashingServer);
+            await self.initializeHashingServer();
         }
 
         // Handle login here if no auth token is provided
@@ -153,30 +150,10 @@ function Client(options) {
             }
             if (self.options.proxy) self.login.setProxy(self.options.proxy);
 
-            promise = promise
-                .then(() => self.login.login(self.options.username, self.options.password))
-                .then(token => {
-                    if (!token) throw new Error('Error during login, no token returned.');
-                    self.options.authToken = token;
-                });
+            const token = await self.login.login(self.options.username, self.options.password);
+            if (!token) throw new Error('Error during login, no token returned.');
+            self.options.authToken = token;
         }
-
-        if (self.options.appSimulation) {
-            const ios = POGOProtos.Enums.Platform.IOS;
-            const version = +self.options.version;
-            promise = promise.then(() => self.batchStart().batchCall())
-                .then(() => self.getPlayer('US', 'en', 'Europe/Paris'))
-                .then(() => self.batchStart()
-                    .downloadRemoteConfigVersion(ios, '', '', '', version)
-                    .checkChallenge()
-                    .getHatchedEggs()
-                    .getInventory()
-                    .checkAwardedBadges()
-                    .downloadSettings()
-                    .batchCall());
-        }
-
-        return promise;
     };
 
     /**
@@ -314,7 +291,7 @@ function Client(options) {
      * Creates an RPC envelope with the given list of requests.
      * @private
      * @param {Object[]} requests - Array of requests to build
-     * @return {POGOProtos.Networking.Envelopes.RequestEnvelope}
+     * @return {Object} POGOProtos.Networking.Envelopes.RequestEnvelope
      */
     this.buildEnvelope = function(requests) {
         const envelopeData = {
@@ -361,10 +338,10 @@ function Client(options) {
     /**
      * Constructs and adds a platform request to a request envelope.
      * @private
-     * @param {RequestEnvelope} envelope - Request envelope
-     * @param {PlatformRequestType} requestType - Type of the platform request to add
+     * @param {Object} envelope - Request envelope
+     * @param {Object} requestType - Type of the platform request to add (PlatformRequestType)
      * @param {Object} requestMessage - Pre-built but not encoded PlatformRequest protobuf message
-     * @return {RequestEnvelope} The envelope (for convenience only)
+     * @return {Object} The envelope (for convenience only)
      */
     this.addPlatformRequestToEnvelope = function(envelope, requestType, requestMessage) {
         const encoded = encode(requestMessage);
@@ -396,7 +373,6 @@ function Client(options) {
                 self.firstGetMapObjects = false;
                 return false;
             }
-
             return true;
         }
 
@@ -408,15 +384,15 @@ function Client(options) {
      * or adds the signature to an existing envelope.
      * @private
      * @param {Object[]} requests - Array of requests to build
-     * @param {RequestEnvelope} [envelope] - Pre-built request envelope to sign
+     * @param {Object} [envelope] - Pre-built request envelope to sign (RequestEnvelope)
      * @return {Promise} - A Promise that will be resolved with a RequestEnvelope instance
      */
-    this.buildSignedEnvelope = function(requests, envelope) {
+    this.buildSignedEnvelope = async function(requests, envelope) {
         if (!envelope) {
             try {
                 envelope = self.buildEnvelope(requests);
             } catch (e) {
-                throw new retry.StopError(e);
+                throw new StopError(e);
             }
         }
 
@@ -460,12 +436,12 @@ function Client(options) {
 
         self.signatureEncryption.setLocation(envelope.latitude, envelope.longitude, envelope.accuracy);
 
-        return retry(() => self.signatureEncryption.encryptAsync(envelope.requests)
+        const sigEncrypted = await retry(() => self.signatureEncryption.encryptAsync(envelope.requests)
             .catch(err => {
                 if (err.name === 'HashServerError' && err.retry) {
                     throw err;
                 } else {
-                    throw new retry.StopError(err);
+                    throw new StopError(err);
                 }
             }),
         {
@@ -473,49 +449,43 @@ function Client(options) {
             backoff: 2,
             max_tries: 5,
             args: envelope.requests,
-        })
-            .then(sigEncrypted => {
-                // remove existing signature if any
-                envelope.platform_requests = envelope.platform_requests
-                    .filter(env => env.type !== PlatformRequestType.SEND_ENCRYPTED_SIGNATURE);
-                self.addPlatformRequestToEnvelope(
-                    envelope, PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
-                    PlatformRequestMessages.SendEncryptedSignatureRequest.fromObject({
-                        encrypted_signature: sigEncrypted
-                    })
-                );
-                return envelope;
-            });
+        });
+
+        // remove existing signature if any
+        envelope.platform_requests = envelope.platform_requests
+            .filter(env => env.type !== PlatformRequestType.SEND_ENCRYPTED_SIGNATURE);
+
+        self.addPlatformRequestToEnvelope(envelope,
+            PlatformRequestType.SEND_ENCRYPTED_SIGNATURE,
+            PlatformRequestMessages.SendEncryptedSignatureRequest.fromObject({
+                encrypted_signature: sigEncrypted
+            }));
+
+        return envelope;
     };
 
     /**
      * Handle redirection to new API endpoint and resend last request to new endpoint.
      * @private
      * @param {Object[]} requests - Array of requests
-     * @param {RequestEnvelope} signedEnvelope - Request envelope
-     * @param {ResponseEnvelope} responseEnvelope - Result from API call
+     * @param {Object} signedEnvelope - Request envelope (POGOProtos RequestEnvelope)
+     * @param {Object} responseEnvelope - Result from API call (POGOProtos ResponseEnvelope)
      * @return {Promise}
      */
     this.redirect = function(requests, signedEnvelope, responseEnvelope) {
-        return new Promise((resolve, reject) => {
-            if (!responseEnvelope.api_url) {
-                reject(Error('Fetching RPC endpoint failed, none supplied in response'));
-                return;
-            }
-
-            self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
-
-            resolve(self.tryCallRPC(requests, signedEnvelope));
-        });
+        if (!responseEnvelope.api_url) {
+            throw new Error('Fetching RPC endpoint failed, none supplied in response');
+        }
+        self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
+        return self.callRPC(requests, signedEnvelope);
     };
 
     /**
      * Executes an RPC call with the given list of requests, retrying if necessary.
      * @private
-     * @param {Object[]} requests - Array of requests to send
-     * @param {RequestEnvelope} [envelope] - Pre-built request envelope to use
+     * @param {Object} [envelope] - Pre-built request envelope to use (POGOProtos RequestEnvelope)
      * @param {boolean} force force request even it it's relogin
-     * @return {Promise} - A Promise that will be resolved with the (list of) response messages,
+     * @return {Bluebird} - A Promise that will be resolved with the (list of) response messages,
      *     or true if there aren't any
      */
     this.callRPC = function(requests, envelope, force) {
@@ -530,27 +500,16 @@ function Client(options) {
     };
 
     /**
-     * Executes an RPC call with the given list of requests.
-     * @private
-     * @param {Object[]} requests - Array of requests to send
-     * @param {RequestEnvelope} [envelope] - Pre-built request envelope to use
-     * @param {boolean} force force request even it it's relogin
-     * @return {Promise} - A Promise that will be resolved with the (list of) response messages,
-     *     or true if there aren't any
+     * Actual HTTP post to Niantic server
+     * @param {any} body
+     * @return {Promise} Promise of a http response
      */
-    this.tryCallRPC = async function(requests, envelope, force) {
-        if (!force && self.isRelogin) {
-            throw new Error('Current relogin, wait a bit.');
-        }
-        const signedEnvelope = await self.buildSignedEnvelope(requests, envelope);
-        const body = encode(signedEnvelope);
-
-        // get request as it's created to remove the unwanted 'connection' header
-        const response = await new Promise((resolve, reject) => {
+    this.post = async function(body) {
+        return new Promise((resolve, reject) => {
             self.request.post({
                 url: self.endpoint,
                 proxy: self.options.proxy,
-                body: body,
+                body,
                 headers: {
                     'Content-Length': body.length,
                 },
@@ -559,11 +518,28 @@ function Client(options) {
                 else resolve(resp);
             }).on('request', req => req.removeHeader('connection'));
         });
+    };
+
+    /**
+     * Executes an RPC call with the given list of requests.
+     * @private
+     * @param {Object[]} requests - Array of requests to send
+     * @param {Object} [envelope] - Pre-built request envelope to use (POGOPRotos RequestEnvelope)
+     * @param {boolean} force force request even it it's relogin
+     * @return {Promise} - A Promise that will be resolved with the (list of) response messages,
+     *     or true if there aren't any
+     */
+    this.tryCallRPC = async function(requests, envelope, force) {
+        if (!force && self.isRelogin) {
+            throw new Error('Current relogin, wait a bit.');
+        }
+        const signedEnvelope = await this.buildSignedEnvelope(requests, envelope);
+        const response = await this.post(encode(signedEnvelope));
 
         if (response.statusCode !== 200) {
             if (response.statusCode >= 400 && response.statusCode < 500) {
                 /* These are permanent errors so throw StopError */
-                throw new retry.StopError(
+                throw new StopError(
                     `Status code ${response.statusCode} received from HTTPS request`
                 );
             } else {
@@ -576,18 +552,17 @@ function Client(options) {
 
         let responseEnvelope;
         try {
-            responseEnvelope =
-                POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(response.body);
+            responseEnvelope = POGOProtos.Networking.Envelopes.ResponseEnvelope.decode(response.body);
         } catch (e) {
             if (e.decoded) {
                 responseEnvelope = e.decoded;
             } else {
-                throw new retry.StopError(e);
+                throw new StopError(e);
             }
         }
 
         if (responseEnvelope.error) {
-            throw new retry.StopError(responseEnvelope.error);
+            throw new StopError(responseEnvelope.error);
         }
 
         if (responseEnvelope.auth_ticket) self.authTicket = responseEnvelope.auth_ticket;
@@ -609,7 +584,7 @@ function Client(options) {
             self.isRelogin = true;
             self.login.reset();
             const token = await self.login.login(self.options.username, self.options.password);
-            if (!token) throw new retry.StopError('Error during relogin, no token returned.');
+            if (!token) throw new StopError('Error during relogin, no token returned.');
             const authInfo = self.getAuthInfoObject();
             const enc = POGOProtos.Networking.Envelopes.RequestEnvelope.AuthInfo.fromObject(authInfo);
             self.options.authToken = token;
@@ -625,17 +600,17 @@ function Client(options) {
         if (responseEnvelope.status_code === 52 && self.endpoint !== INITIAL_ENDPOINT) {
             self.throttled++;
             if (self.throttled < self.options.maxTriesThrottling) {
-                await Promise.delay(2000);
+                await Bluebird.delay(2000);
                 return self.tryCallRPC(requests, signedEnvelope);
             } else {
-                throw new retry.StopError(`Throttled ${self.throttled} times`);
+                throw new StopError(`Throttled ${self.throttled} times`);
             }
         }
 
         /* These codes indicate invalid input, no use in retrying so throw StopError */
         if (responseEnvelope.status_code === 3 || responseEnvelope.status_code === 51 ||
             responseEnvelope.status_code >= 100) {
-            throw new retry.StopError(
+            throw new StopError(
                 `Status code ${responseEnvelope.status_code} received from RPC`
             );
         }
@@ -666,7 +641,7 @@ function Client(options) {
                         responseMessage, { defaults: true }
                     );
                 } catch (e) {
-                    throw new retry.StopError(e);
+                    throw new StopError(e);
                 }
 
                 if (self.options.includeRequestTypeInResponse) {
@@ -697,9 +672,8 @@ function Client(options) {
     /**
      * Makes an initial call to the hashing server to verify API version.
      * @private
-     * @return {Promise}
      */
-    this.initializeHashingServer = function() {
+    this.initializeHashingServer = async function() {
         if (!self.options.hashingServer) throw new Error('Hashing server enabled without host');
         if (!self.options.hashingKey) throw new Error('Hashing server enabled without key');
 
@@ -709,15 +683,11 @@ function Client(options) {
 
         if (self.options.hashingVersion != null) {
             self.hashingVersion = self.options.hashingVersion;
-            return Promise.resolve();
         } else {
             let version = +self.options.version;
             if (version === 8900) version = 8901; // fix for bossland endpoint naming
             if (version === 9100) version = 8901; // fix for unpublished bossland endpoint
-            return Signature.versions.getHashingEndpoint(self.options.hashingServer, version)
-                .then(hashVersion => {
-                    self.hashingVersion = hashVersion;
-                });
+            self.hashingVersion = await Signature.versions.getHashingEndpoint(self.options.hashingServer, version);
         }
     };
 }

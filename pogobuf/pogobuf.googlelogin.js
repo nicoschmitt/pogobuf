@@ -43,10 +43,10 @@ function GoogleLogin() {
      * @param {string} password
      * @return {Promise}
      */
-    this.login = function(username, password) {
-        return self.getMasterToken(username, password)
-            .then(loginData => self.getToken(username, loginData))
-            .then(authData => authData.Auth);
+    this.login = async function(username, password) {
+        const loginData = self.getMasterToken(username, password);
+        const authData = self.getToken(username, loginData);
+        return authData.Auth;
     };
 
     /**
@@ -57,7 +57,7 @@ function GoogleLogin() {
      * @return {Promise}
      */
     this.loginWithToken = function(username, token) {
-        var loginData = {
+        const loginData = {
             androidId: GOOGLE_LOGIN_ANDROID_ID,
             masterToken: token
         };
@@ -96,7 +96,7 @@ function GoogleLogin() {
      * Finalizes oAuth request using master token and resolved with the auth data
      * @private
      * @param {string} username
-     * @param {string} loginData
+     * @param {any} loginData
      * @return {Promise}
      */
     this.getToken = function(username, loginData) {
