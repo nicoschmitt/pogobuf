@@ -120,6 +120,7 @@ function Client(options) {
         let signatureVersion = '0.' + ((+self.options.version) / 100).toFixed(0);
         signatureVersion += '.' + (+self.options.version % 100);
 
+        if (self.signatureGenerator) self.signatureGenerator.clean();
         self.signatureGenerator = new Signature.signature.Generator();
         self.signatureGenerator.register(self, self.options.deviceId);
 
@@ -532,7 +533,7 @@ function Client(options) {
      */
     this.tryCallRPC = async function(requests, envelope, force) {
         if (!force && self.isRelogin) {
-            throw new Error('Current relogin, wait a bit.');
+            throw new Error('Currently relogin, wait a bit.');
         }
         const signedEnvelope = await this.buildSignedEnvelope(requests, envelope);
         const response = await this.post(encode(signedEnvelope));
@@ -635,11 +636,11 @@ function Client(options) {
 
                 let responseMessage;
                 try {
-                    responseMessage = requests[i].responseType.decode(
+                    const decoded = requests[i].responseType.decode(
                         responseEnvelope.returns[i]
                     );
                     responseMessage = requests[i].responseType.toObject(
-                        responseMessage, { defaults: true }
+                        decoded, { defaults: true }
                     );
                 } catch (e) {
                     throw new StopError(e);
