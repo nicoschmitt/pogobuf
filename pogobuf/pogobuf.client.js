@@ -131,11 +131,6 @@ function Client(options) {
             initTime: (new Date().getTime() - 3500 - Math.random() * 5000),
         });
 
-        // self.signatureEncryption.encryptAsync = Bluebird.promisify(
-        //     self.signatureEncryption.encrypt,
-        //     { context: self.signatureEncryption }
-        // );
-
         if (self.options.useHashingServer) {
             await self.initializeHashingServer();
         }
@@ -466,20 +461,12 @@ function Client(options) {
         return envelope;
     };
 
-    /**
-     * Handle redirection to new API endpoint and resend last request to new endpoint.
-     * @private
-     * @param {Object[]} requests - Array of requests
-     * @param {Object} signedEnvelope - Request envelope (POGOProtos RequestEnvelope)
-     * @param {Object} responseEnvelope - Result from API call (POGOProtos ResponseEnvelope)
-     * @return {Promise}
-     */
-    this.redirect = function(requests, signedEnvelope, responseEnvelope) {
+    this.redirect = function(requests, signedEnvelope, responseEnvelope, force) {
         if (!responseEnvelope.api_url) {
             throw new Error('Fetching RPC endpoint failed, none supplied in response');
         }
         self.endpoint = 'https://' + responseEnvelope.api_url + '/rpc';
-        return self.callRPC(requests, signedEnvelope);
+        return self.callRPC(requests, signedEnvelope, force);
     };
 
     /**
@@ -572,7 +559,7 @@ function Client(options) {
 
         if (responseEnvelope.status_code === 53 ||
             (responseEnvelope.status_code === 2 && self.endpoint === INITIAL_ENDPOINT)) {
-            return self.redirect(requests, signedEnvelope, responseEnvelope);
+            return self.redirect(requests, signedEnvelope, responseEnvelope, force);
         }
 
         responseEnvelope.platform_returns.forEach(platformReturn => {
@@ -604,7 +591,7 @@ function Client(options) {
             self.throttled++;
             if (self.throttled < self.options.maxTriesThrottling) {
                 await Bluebird.delay(2000);
-                return self.tryCallRPC(requests, signedEnvelope);
+                return self.tryCallRPC(requests, signedEnvelope, force);
             } else {
                 throw new StopError(`Throttled ${self.throttled} times`);
             }
