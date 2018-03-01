@@ -39,6 +39,7 @@ const defaultOptions = {
     hashingVersion: null,
     hashingKey: null,
     deviceId: null,
+    useLocFixTimer: true,
 };
 
 /**
@@ -122,7 +123,7 @@ function Client(options) {
 
         if (self.signatureGenerator) self.signatureGenerator.clean();
         self.signatureGenerator = new Signature.signature.Generator();
-        self.signatureGenerator.register(self, self.options.deviceId);
+        self.signatureGenerator.register(self, self.options.deviceId, self.options.useLocFixTimer);
 
         self.signatureEncryption = new Signature.encryption.Builder({
             protos: POGOProtos,
@@ -130,10 +131,10 @@ function Client(options) {
             initTime: (new Date().getTime() - 3500 - Math.random() * 5000),
         });
 
-        self.signatureEncryption.encryptAsync = Bluebird.promisify(
-            self.signatureEncryption.encrypt,
-            { context: self.signatureEncryption }
-        );
+        // self.signatureEncryption.encryptAsync = Bluebird.promisify(
+        //     self.signatureEncryption.encrypt,
+        //     { context: self.signatureEncryption }
+        // );
 
         if (self.options.useHashingServer) {
             await self.initializeHashingServer();
@@ -437,7 +438,7 @@ function Client(options) {
 
         self.signatureEncryption.setLocation(envelope.latitude, envelope.longitude, envelope.accuracy);
 
-        const sigEncrypted = await retry(() => self.signatureEncryption.encryptAsync(envelope.requests)
+        const sigEncrypted = await retry(() => self.signatureEncryption.encrypt(envelope.requests)
             .catch(err => {
                 if (err.name === 'HashServerError' && err.retry) {
                     throw err;
