@@ -491,7 +491,7 @@ function Client(options) {
 
     /**
      * Actual HTTP post to Niantic server
-     * @param {any} body
+     * @param {Buffer} body
      * @return {Promise} Promise of a http response
      */
     this.post = async function(body) {
@@ -524,7 +524,7 @@ function Client(options) {
             throw new Error('Currently relogin, wait a bit.');
         }
         const signedEnvelope = await this.buildSignedEnvelope(requests, envelope);
-        const response = await this.post(encode(signedEnvelope));
+        let response = await this.post(encode(signedEnvelope));
 
         if (response.statusCode !== 200) {
             if (response.statusCode >= 400 && response.statusCode < 500) {
@@ -550,6 +550,7 @@ function Client(options) {
                 throw new StopError(e);
             }
         }
+        response = undefined;
 
         if (responseEnvelope.error) {
             throw new StopError(responseEnvelope.error);
@@ -640,14 +641,14 @@ function Client(options) {
                 responses.push(responseMessage);
             }
         } else {
-            responseEnvelope.platform_returns.forEach(platformReturn => {
+            for (const platformReturn of responseEnvelope.platform_returns) {
                 if (platformReturn.type === PlatformRequestType.GET_STORE_ITEMS) {
                     const store = PlatformResponses.GetStoreItemsResponse.decode(platformReturn.response);
                     store._requestType = -1;
                     store._ptfmRequestType = PlatformRequestType.GET_STORE_ITEMS;
                     responses.push(store);
                 }
-            });
+            }
         }
 
         if (self.options.automaticLongConversion) {

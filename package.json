@@ -32,7 +32,7 @@
     "gpsoauth": "^1.0.1",
     "long": "^4.0.0",
     "node-pogo-protos-vnext": "^2.20.1",
-    "pogobuf-signature": "^2.4.0",
+    "pogobuf-signature": "^2.5.1",
     "request": "^2.83.0",
     "s2-geometry": "^1.2.9"
   },
