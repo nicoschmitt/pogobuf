@@ -215,19 +215,6 @@ function Client(options) {
     /*
      * INTERNAL STUFF
      */
-
-    this.request = request.defaults({
-        encoding: null,
-        gzip: true,
-        headers: {
-            'Content-Type': 'application/binary',
-            'Host': 'pgorelease.nianticlabs.com',
-            'User-Agent': 'Niantic App',
-            'Content-Length': -1, // for order, will be fixed later
-            'Accept-Encoding': 'identity, gzip',
-        },
-    });
-
     this.options = Object.assign({}, defaultOptions, options || {});
     this.authTicket = null;
     this.rpcId = 2;
@@ -496,13 +483,19 @@ function Client(options) {
      */
     this.post = async function(body) {
         return new Promise((resolve, reject) => {
-            self.request.post({
+            request.post({
                 url: self.endpoint,
                 proxy: self.options.proxy,
                 body: body,
                 headers: {
+                    'Content-Type': 'application/binary',
+                    'Host': 'pgorelease.nianticlabs.com',
+                    'User-Agent': 'Niantic App',
                     'Content-Length': body.length,
+                    'Accept-Encoding': 'identity, gzip',
                 },
+                encoding: null,
+                gzip: true,
             }, (err, resp) => {
                 if (err) reject(err);
                 else resolve(resp);
