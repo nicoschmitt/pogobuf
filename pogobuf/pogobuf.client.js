@@ -483,10 +483,8 @@ function Client(options) {
      */
     this.post = async function(body) {
         return new Promise((resolve, reject) => {
-            request.post({
-                url: self.endpoint,
+            let onetime = request.defaults({
                 proxy: self.options.proxy,
-                body: body,
                 headers: {
                     'Content-Type': 'application/binary',
                     'Host': 'pgorelease.nianticlabs.com',
@@ -496,7 +494,12 @@ function Client(options) {
                 },
                 encoding: null,
                 gzip: true,
+            });
+            onetime.post({
+                url: self.endpoint,
+                body: body,
             }, (err, resp) => {
+                onetime = null;
                 if (err) reject(err);
                 else resolve(resp);
             }).on('request', req => req.removeHeader('connection'));
