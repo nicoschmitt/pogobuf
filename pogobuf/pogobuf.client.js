@@ -483,7 +483,9 @@ function Client(options) {
      */
     this.post = async function(body) {
         return new Promise((resolve, reject) => {
-            let onetime = request.defaults({
+            request.post({
+                url: self.endpoint,
+                body: body,
                 proxy: self.options.proxy,
                 headers: {
                     'Content-Type': 'application/binary',
@@ -494,12 +496,7 @@ function Client(options) {
                 },
                 encoding: null,
                 gzip: true,
-            });
-            onetime.post({
-                url: self.endpoint,
-                body: body,
             }, (err, resp) => {
-                onetime = null;
                 if (err) reject(err);
                 else resolve(resp);
             }).on('request', req => req.removeHeader('connection'));
