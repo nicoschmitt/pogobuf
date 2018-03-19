@@ -9,10 +9,10 @@ module.exports.defineApiCalls = function(self) {
             type: RequestType.GET_PLAYER,
             message: RequestMessages.GetPlayerMessage.fromObject({
                 player_locale: {
-                    country: country,
-                    language: language,
-                    timezone: timezone
-                }
+                    country,
+                    language,
+                    timezone
+                },
             }),
             responseType: Responses.GetPlayerResponse
         });
@@ -32,7 +32,7 @@ module.exports.defineApiCalls = function(self) {
         return self.callOrChain({
             type: RequestType.DOWNLOAD_SETTINGS,
             message: RequestMessages.DownloadSettingsMessage.fromObject({
-                hash: hash
+                hash,
             }),
             responseType: Responses.DownloadSettingsResponse
         });

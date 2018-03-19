@@ -7,8 +7,8 @@
 
 ## Features
 * Implements all known Pokémon Go API calls
-* Includes [hashing server support](https://github.com/cyraxx/pogobuf/wiki/Using-a-hashing-server) (API version 0.51 and up)
-* Uses ES6 Promises and [Bluebird](https://github.com/petkaantonov/bluebird/)
+* Includes [hashing server support](https://github.com/cyraxx/pogobuf/wiki/Using-a-hashing-server)
+* Uses ES6 Promises
 * Includes [Pokémon Trainer Club](https://www.pokemon.com/en/pokemon-trainer-club) and Google login clients
 * Optional batch mode to group several requests in one RPC call
 * Automatically retries failed API requests with increasing delay
@@ -22,4 +22,5 @@
 * Uses the excellent [POGOProtos](https://github.com/AeonLucid/POGOProtos) (via [node-pogo-protos](https://github.com/pogosandbox/node-pogo-protos))
 
 # Documentation and usage
-You can find the documentation and other information in the [wiki](https://github.com/cyraxx/pogobuf/wiki).
+You can find the documentation and other information in the [wiki](https://github.com/pogosandbox/pogobuf/wiki).  
+Old wiki still up: [wiki](https://github.com/cyraxx/pogobuf/wiki).
