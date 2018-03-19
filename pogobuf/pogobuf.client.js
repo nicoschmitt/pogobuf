@@ -20,7 +20,7 @@ const RequestType = POGOProtos.Networking.Requests.RequestType,
 const StopError = retry.StopError;
 
 const INITIAL_ENDPOINT = 'https://pgorelease.nianticlabs.com/plfe/rpc';
-const INITIAL_PTR8 = '4d32f6b70cda8539ab82be5750e009d6d05a48ad';
+const INITIAL_PTR8 = 'd9ad6deadadfd59abc0e8a85d01e2f6140e6e79b';
 
 // See pogobuf wiki for description of options
 const defaultOptions = {

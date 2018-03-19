@@ -31,13 +31,13 @@
     "bluebird-retry": "^0.11.0",
     "gpsoauth": "^1.0.1",
     "long": "^4.0.0",
-    "node-pogo-protos-vnext": "^2.20.1",
+    "node-pogo-protos-vnext": "^2.21.0",
     "pogobuf-signature": "^2.5.1",
-    "request": "^2.83.0",
+    "request": "^2.85.0",
     "s2-geometry": "^1.2.9"
   },
   "devDependencies": {
-    "eslint": "^4.18.1",
+    "eslint": "^4.19.0",
     "eslint-config-airbnb-base": "^12.1.0",
     "eslint-plugin-import": "^2.9.0"
   }
