@@ -371,6 +371,13 @@ declare namespace pogobuf {
             newsIds: string[]
         ): pogobuf.Client;
 
+        getNewQuests(
+        ): pogobuf.Client;
+
+        getQuestDetails(
+            questIds: string[]
+        ): pogobuf.Client;
+
         // platform client action
 
         optOutPushNotificationCategory(

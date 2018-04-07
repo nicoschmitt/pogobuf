@@ -712,6 +712,23 @@ module.exports.defineApiCalls = function(self) {
         });
     };
 
+    self.getNewQuests = function() {
+        return self.callOrChain({
+            type: RequestType.GET_NEW_QUESTS,
+            responseType: Responses.GetNewQuestsResponse,
+        });
+    };
+
+    self.getQuestDetails = function(questIds) {
+        return self.callOrChain({
+            type: RequestType.GET_QUEST_DETAILS,
+            message: RequestMessages.GetQuestDetailsMessage.fromObject({
+                quest_id: questIds,
+            }),
+            responseType: Responses.GetQuestDetailsResponse,
+        });
+    }
+
     /*
      * Platform Client Actions
      */
